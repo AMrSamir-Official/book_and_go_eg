@@ -1,16 +1,24 @@
-"use client"
+"use client";
 
-import { useTranslations } from "next-intl"
-import { usePathname } from "next/navigation"
-import Link from "next/link"
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { LayoutDashboard, Calendar, FileText, Bell, Settings, Calculator, DollarSign } from "lucide-react"
+} from "@/components/ui/sidebar";
+import {
+  Bell,
+  Calculator,
+  Calendar,
+  DollarSign,
+  FileText,
+  LayoutDashboard,
+  Settings,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navigationItems = [
   {
@@ -45,21 +53,21 @@ const navigationItems = [
   },
   {
     title: "settings",
-    href: "/settings",
+    href: "/admin/settings",
     icon: Settings,
   },
-]
+];
 
 export function SidebarNavigation() {
-  const t = useTranslations("navigation")
-  const pathname = usePathname()
+  const t = useTranslations("navigation");
+  const pathname = usePathname();
 
   return (
     <SidebarGroup>
       <SidebarGroupContent>
         <SidebarMenu>
           {navigationItems.map((item) => {
-            const isActive = pathname.includes(item.href)
+            const isActive = pathname.includes(item.href);
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive}>
@@ -69,10 +77,10 @@ export function SidebarNavigation() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            )
+            );
           })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  )
+  );
 }

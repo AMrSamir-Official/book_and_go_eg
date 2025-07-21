@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/lib/auth";
-import { Bell, Globe, LogOut, Moon, Sun, User } from "lucide-react";
+import { Bell, Globe, LogOut, Moon, Sun } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -36,11 +36,11 @@ export function Header() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-      <div className="flex items-center space-x-4">
+      {/* <div className="flex items-center space-x-4">
         <h1 className="text-xl font-semibold">{t("dashboard")}</h1>
-      </div>
+      </div> */}
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 justify-around w-full">
         {/* Notifications */}
         {user?.role === "admin" && (
           <Button variant="ghost" size="icon" className="relative">
@@ -114,10 +114,10 @@ export function Header() {
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/profile")}>
+            {/* <DropdownMenuItem onClick={() => router.push("/profile")}>
               <User className="mr-2 h-4 w-4" />
               {t("profile")}
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />

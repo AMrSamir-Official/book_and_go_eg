@@ -13,11 +13,11 @@ export const Header = memo(function Header() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-      <div className="flex items-center space-x-4">
+      {/* <div className="flex items-center space-x-4">
         <h1 className="text-xl font-semibold">{t("dashboard")}</h1>
-      </div>
+      </div> */}
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4  justify-around w-full">
         <HeaderNotifications />
         <HeaderActions />
         <HeaderUserMenu />

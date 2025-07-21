@@ -3,7 +3,6 @@
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -379,8 +378,8 @@ export default function NewBookingPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between flex-wrap">
+          <div className="flex items-center space-x-4 flex-wrap">
             <Button variant="ghost" size="sm" onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -392,7 +391,7 @@ export default function NewBookingPage() {
               <p className="text-muted-foreground">Book & Go Travel</p>
             </div>
           </div>
-          <div className="flex space-x-2 no-print">
+          <div className="flex space-x-2 no-print flex-wrap">
             <Button
               variant="outline"
               onClick={handlePrintBooking}
@@ -406,7 +405,7 @@ export default function NewBookingPage() {
               ) : (
                 <>
                   <Printer className="mr-2 h-4 w-4" />
-                  Print / Send by WhatsApp PDF
+                  Make PDF
                 </>
               )}
             </Button>
@@ -867,7 +866,7 @@ export default function NewBookingPage() {
                               )
                             }
                           >
-                            <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-4 flex-wrap">
                               <div className="flex items-center space-x-2">
                                 <RadioGroupItem
                                   value="pending"
@@ -932,7 +931,7 @@ export default function NewBookingPage() {
                             )
                           }
                         >
-                          <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-4 flex-wrap">
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem
                                 value="pending"
@@ -1112,7 +1111,7 @@ export default function NewBookingPage() {
                 <div className="flex justify-end no-print">
                   <Button variant="outline" onClick={handlePrintBooking}>
                     <Printer className="mr-2 h-4 w-4" />
-                    Print / Send by WhatsApp PDF
+                    Make PDF
                   </Button>
                 </div>
               </CardContent>
@@ -1286,11 +1285,11 @@ export default function NewBookingPage() {
                     </div>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <Label className="text-base font-medium">
                       Send Service Order by:
                     </Label>
-                    <div className="flex space-x-4 mt-2">
+                    <div className="flex space-x-4 mt-2 flex-wrap gap-2">
                       <div className="flex items-center space-x-2">
                         <Checkbox id="cairo-whatsapp" />
                         <Label htmlFor="cairo-whatsapp">WhatsApp</Label>
@@ -1304,7 +1303,7 @@ export default function NewBookingPage() {
                         <Label htmlFor="cairo-email">Email</Label>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 <Separator />
@@ -1468,7 +1467,7 @@ export default function NewBookingPage() {
                     </div>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <Label className="text-base font-medium">
                       Send Service Order by:
                     </Label>
@@ -1486,7 +1485,7 @@ export default function NewBookingPage() {
                         <Label htmlFor="aswan-email">Email</Label>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>
@@ -1594,14 +1593,15 @@ export default function NewBookingPage() {
                   </Select>
                 </div>
 
-                <div className="flex space-x-4 no-print">
+                <div className="flex space-x-4 no-print flex-wrap">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleWhatsAppShare}
+                    className="gap-3"
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
-                    Send service order WhatsApp
+                    Send WhatsApp
                   </Button>
                   <Button
                     type="button"
@@ -1841,7 +1841,7 @@ export default function NewBookingPage() {
                 </Button>
 
                 {/* Notes for the Guide */}
-                <div className="bg-muted p-4 rounded-lg">
+                {/* <div className="bg-muted p-4 rounded-lg">
                   <h5 className="font-medium mb-2">Notes for the Guide</h5>
                   <ul className="text-sm space-y-1 text-muted-foreground">
                     <li>- Be on time at pickup location.</li>
@@ -1858,7 +1858,7 @@ export default function NewBookingPage() {
                       Contact / WhatsApp].
                     </li>
                   </ul>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
 

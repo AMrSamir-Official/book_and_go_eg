@@ -317,7 +317,7 @@ export default function NewBookingPage() {
 
     // Redirect to accounting page for this booking
     setTimeout(() => {
-      router.push(`/admin/booking/new/accounting`);
+      router.push(`/bookings/new/accounting`);
     }, 1500);
   };
 
@@ -1813,7 +1813,7 @@ export default function NewBookingPage() {
             <div className="flex justify-center no-print">
               <Button type="submit" size="lg" className="px-8">
                 <Save className="mr-2 h-5 w-5" />
-                <Link href="/admin/booking/new/accounting">
+                <Link href="/bookings/new/accounting">
                   Create Booking & Go to Accounting
                 </Link>
               </Button>

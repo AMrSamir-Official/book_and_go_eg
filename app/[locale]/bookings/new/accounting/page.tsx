@@ -30,14 +30,7 @@ import {
   sampleBookings,
 } from "@/lib/fake-data";
 import { useBookingFormStore } from "@/lib/store";
-import {
-  DollarSign,
-  MessageSquare,
-  Minus,
-  Plus,
-  Printer,
-  Save,
-} from "lucide-react";
+import { DollarSign, Minus, Plus, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -251,18 +244,6 @@ export default function NewAccounting() {
     router.push("/invoices");
   };
 
-  const handleWhatsApp = () => {
-    const message = "New invoice created - Book & Go Travel";
-    const url = `https://wa.me/201122636253?text=${encodeURIComponent(
-      message
-    )}`;
-    window.open(url, "_blank");
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   const extraIncomingTypes = [
     "Tipping",
     "Optional tours",
@@ -280,16 +261,6 @@ export default function NewAccounting() {
             <p className="text-muted-foreground">
               Accounting File - Book & Go Travel
             </p>
-          </div>
-          <div className="flex space-x-2 no-print">
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
-            </Button>
-            <Button variant="outline" onClick={handleWhatsApp}>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Send WhatsApp
-            </Button>
           </div>
         </div>
 

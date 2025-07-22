@@ -166,13 +166,18 @@ export default function BookingsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            {t("view")}
+                            <Link
+                              className="flex w-full"
+                              href={`/bookings/${booking.id}`}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              {t("view")}
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Link
                               href={`/bookings/${booking.id}/edit`}
-                              className="flex items-center"
+                              className="flex items-center w-full"
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               {t("edit")}
@@ -181,7 +186,7 @@ export default function BookingsPage() {
                           <DropdownMenuItem>
                             <Link
                               href={`/invoices/new?booking=${booking.id}`}
-                              className="flex items-center"
+                              className="flex items-center w-full"
                             >
                               <FileText className="mr-2 h-4 w-4" />
                               {t("createInvoice")}

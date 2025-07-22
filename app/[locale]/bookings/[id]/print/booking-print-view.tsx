@@ -1,94 +1,95 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, Download, MessageSquare } from "lucide-react"
-import { downloadPDF, shareToWhatsApp } from "@/lib/pdf-utils"
-import { useToast } from "@/hooks/use-toast"
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Download, MessageSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+// import { downloadPDF, shareToWhatsApp } from "@/lib/pdf-utils"
+import { useToast } from "@/hooks/use-toast";
+import { downloadStyledPDF } from "@/lib/pdf-utils";
 
-interface BookingData {
-  fileNumber: string
-  supplier: string
-  paxCount: number
-  nationality: string
-  arrivalDate: string
-  departureDate: string
-  numberOfNights: number
+export interface BookingData {
+  fileNumber: string;
+  supplier: string;
+  paxCount: number;
+  nationality: string;
+  arrivalDate: string;
+  departureDate: string;
+  numberOfNights: number;
   arrivalFlight: {
-    date: string
-    time: string
-    airlineName: string
-    flightNo: string
-  }
+    date: string;
+    time: string;
+    airlineName: string;
+    flightNo: string;
+  };
   departureFlight: {
-    date: string
-    time: string
-    airlineName: string
-    flightNo: string
-  }
+    date: string;
+    time: string;
+    airlineName: string;
+    flightNo: string;
+  };
   domesticFlights: Array<{
-    departure: string
-    arrival: string
-    date: string
-    time: string
-    airlineName: string
-    flightNo: string
-  }>
+    departure: string;
+    arrival: string;
+    date: string;
+    time: string;
+    airlineName: string;
+    flightNo: string;
+  }>;
   hotels: Array<{
-    name: string
-    checkIn: string
-    checkOut: string
-    status: "pending" | "confirmed"
-    roomType: string
-    nights: number
-  }>
+    name: string;
+    checkIn: string;
+    checkOut: string;
+    status: "pending" | "confirmed";
+    roomType: string;
+    nights: number;
+  }>;
   nileCruise: {
-    name: string
-    checkIn: string
-    checkOut: string
-    status: "pending" | "confirmed"
-    cabinType: string
-  }
-  include: string
-  exclude: string
-  specialNotice: string
+    name: string;
+    checkIn: string;
+    checkOut: string;
+    status: "pending" | "confirmed";
+    cabinType: string;
+  };
+  include: string;
+  exclude: string;
+  specialNotice: string;
   dailyProgram: Array<{
-    day: number
-    date: string
-    city: string
-    details: string
-  }>
+    day: number;
+    date: string;
+    city: string;
+    details: string;
+  }>;
   guides: Array<{
-    city: string
-    guideName: string
-    guestNationality: string
-    paxAdults: number
-    paxChildren: number
-    pickupHotelLocation: string
-    language: string
-  }>
+    city: string;
+    guideName: string;
+    guestNationality: string;
+    paxAdults: number;
+    paxChildren: number;
+    pickupHotelLocation: string;
+    language: string;
+  }>;
   meetingAssist: {
-    paxCount: number
-    name: string
-    nationality: string
-    flightDetails: string
-  }
+    paxCount: number;
+    name: string;
+    nationality: string;
+    flightDetails: string;
+  };
   transportation: Array<{
-    type: string
-    from: string
-    to: string
-    date: string
-    vehicleType: string
-    status: string
-  }>
+    type: string;
+    from: string;
+    to: string;
+    date: string;
+    vehicleType: string;
+    status: string;
+  }>;
 }
 
 export function BookingPrintView({ bookingId }: { bookingId: string }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [booking, setBooking] = useState<BookingData | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [booking, setBooking] = useState<BookingData | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     // Load booking data - in real app this would come from API
@@ -288,62 +289,71 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
           status: "confirmed",
         },
       ],
-    }
-    setBooking(mockBooking)
-  }, [bookingId])
+    };
+    setBooking(mockBooking);
+  }, [bookingId]);
+
+  // booking-print-view.tsx
 
   const handleDownloadPDF = async () => {
-    const printElement = document.getElementById("booking-print-content")
-    if (!printElement || !booking) return
+    if (!booking) return;
 
-    setIsGenerating(true)
+    setIsGenerating(true);
     try {
-      await downloadPDF(printElement, `booking-${booking.fileNumber}.pdf`)
+      // We no longer need the HTML element. We pass the data directly.
+
+      downloadStyledPDF(booking); //  <-- Correct function name
+
       toast({
-        title: "PDF Downloaded",
-        description: "Booking details have been downloaded successfully!",
-      })
+        title: "PDF Generated",
+        description: "Booking details have been generated successfully!",
+      });
     } catch (error) {
+      console.error(error);
       toast({
         title: "Error",
         description: "Failed to generate PDF. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
-  const handleWhatsAppShare = async () => {
-    const printElement = document.getElementById("booking-print-content")
-    if (!printElement || !booking) return
+  // const handleWhatsAppShare = async () => {
+  //   const printElement = document.getElementById("booking-print-content")
+  //   if (!printElement || !booking) return
 
-    setIsGenerating(true)
-    try {
-      const message = `🎫 *BOOKING DETAILS - ${booking.fileNumber}*\n\n📋 Supplier: ${booking.supplier}\n👥 Pax: ${booking.paxCount}\n🌍 Nationality: ${booking.nationality}\n📅 ${booking.arrivalDate} - ${booking.departureDate}\n🏨 ${booking.numberOfNights} nights\n\n📄 Complete booking details attached.`
+  //   setIsGenerating(true)
+  //   try {
+  //     const message = `🎫 *BOOKING DETAILS - ${booking.fileNumber}*\n\n📋 Supplier: ${booking.supplier}\n👥 Pax: ${booking.paxCount}\n🌍 Nationality: ${booking.nationality}\n📅 ${booking.arrivalDate} - ${booking.departureDate}\n🏨 ${booking.numberOfNights} nights\n\n📄 Complete booking details attached.`
 
-      await shareToWhatsApp(printElement, message)
-      toast({
-        title: "Shared to WhatsApp",
-        description: "Booking details have been shared successfully!",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to share to WhatsApp. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsGenerating(false)
-    }
-  }
+  //     await shareToWhatsApp(printElement, message)
+  //     toast({
+  //       title: "Shared to WhatsApp",
+  //       description: "Booking details have been shared successfully!",
+  //     })
+  //   } catch (error) {
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to share to WhatsApp. Please try again.",
+  //       variant: "destructive",
+  //     })
+  //   } finally {
+  //     setIsGenerating(false)
+  //   }
+  // }
 
   if (!booking) {
-    return <div className="flex items-center justify-center min-h-screen bg-white">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        Loading...
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div dir="ltr" className="min-h-screen bg-white ">
       {/* Print Controls - Hidden in print */}
       <div className="no-print bg-gray-50 border-b p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -352,7 +362,11 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
             Back
           </Button>
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={handleDownloadPDF} disabled={isGenerating}>
+            <Button
+              variant="outline"
+              onClick={handleDownloadPDF}
+              disabled={isGenerating}
+            >
               {isGenerating ? (
                 <>
                   <Download className="mr-2 h-4 w-4 animate-spin" />
@@ -365,7 +379,11 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
                 </>
               )}
             </Button>
-            <Button variant="outline" onClick={handleWhatsAppShare} disabled={isGenerating}>
+            <Button
+              variant="outline"
+              // onClick={handleWhatsAppShare}
+              disabled={isGenerating}
+            >
               <MessageSquare className="mr-2 h-4 w-4" />
               Share WhatsApp
             </Button>
@@ -375,7 +393,10 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
       </div>
 
       {/* Printable Content */}
-      <div id="booking-print-content" className="max-w-4xl mx-auto p-8 bg-white text-black">
+      <div
+        id="booking-print-content"
+        className="max-w-4xl mx-auto p-8 bg-white text-black overflow-auto max-h-[100vh]"
+      >
         {/* Header */}
         <div className="text-center mb-8 border-b-2 border-blue-600 pb-6">
           <div className="mb-4">
@@ -383,11 +404,16 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
               <span className="text-white font-bold text-xl">B&G</span>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-blue-600 mb-2">Book & Go Travel</h1>
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Complete Travel Operation Form</h2>
+          <h1 className="text-4xl font-bold text-blue-600 mb-2">
+            Book & Go Travel
+          </h1>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+            Complete Travel Operation Form
+          </h2>
           <div className="text-lg text-gray-600">
             <p>
-              File Number: <span className="font-semibold">{booking.fileNumber}</span>
+              File Number:{" "}
+              <span className="font-semibold">{booking.fileNumber}</span>
             </p>
             <p>Generated on: {new Date().toLocaleDateString()}</p>
           </div>
@@ -429,29 +455,42 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Flight Details */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">Flight Details</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            Flight Details
+          </h3>
           <div className="space-y-4">
             <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Arrival Flight Details:</h4>
+              <h4 className="font-semibold text-gray-700 mb-2">
+                Arrival Flight Details:
+              </h4>
               <p>
-                Date: {booking.arrivalFlight.date} | Time: {booking.arrivalFlight.time} | Airline:{" "}
-                {booking.arrivalFlight.airlineName} | Flight No: {booking.arrivalFlight.flightNo}
+                Date: {booking.arrivalFlight.date} | Time:{" "}
+                {booking.arrivalFlight.time} | Airline:{" "}
+                {booking.arrivalFlight.airlineName} | Flight No:{" "}
+                {booking.arrivalFlight.flightNo}
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Departure Flight Details:</h4>
+              <h4 className="font-semibold text-gray-700 mb-2">
+                Departure Flight Details:
+              </h4>
               <p>
-                Date: {booking.departureFlight.date} | Time: {booking.departureFlight.time} | Airline:{" "}
-                {booking.departureFlight.airlineName} | Flight No: {booking.departureFlight.flightNo}
+                Date: {booking.departureFlight.date} | Time:{" "}
+                {booking.departureFlight.time} | Airline:{" "}
+                {booking.departureFlight.airlineName} | Flight No:{" "}
+                {booking.departureFlight.flightNo}
               </p>
             </div>
             {booking.domesticFlights.length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-700 mb-2">Domestic Flight Details:</h4>
+                <h4 className="font-semibold text-gray-700 mb-2">
+                  Domestic Flight Details:
+                </h4>
                 {booking.domesticFlights.map((flight, index) => (
                   <p key={index}>
-                    Flight {index + 1}: {flight.departure} → {flight.arrival} | Date: {flight.date} | Time:{" "}
-                    {flight.time} | Airline: {flight.airlineName} | Flight No: {flight.flightNo}
+                    Flight {index + 1}: {flight.departure} → {flight.arrival} |
+                    Date: {flight.date} | Time: {flight.time} | Airline:{" "}
+                    {flight.airlineName} | Flight No: {flight.flightNo}
                   </p>
                 ))}
               </div>
@@ -461,7 +500,9 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Accommodation */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">2. Accommodation</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            2. Accommodation
+          </h3>
           <div className="space-y-4">
             <h4 className="font-semibold text-gray-700 mb-2">Hotels:</h4>
             {booking.hotels.map((hotel, index) => (
@@ -478,7 +519,11 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
                 <p>
                   Status:{" "}
                   <span
-                    className={`font-medium ${hotel.status === "confirmed" ? "text-green-600" : "text-orange-600"}`}
+                    className={`font-medium ${
+                      hotel.status === "confirmed"
+                        ? "text-green-600"
+                        : "text-orange-600"
+                    }`}
                   >
                     {hotel.status}
                   </span>
@@ -487,15 +532,22 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
             ))}
             {booking.nileCruise.name && (
               <div className="border border-gray-200 p-4 rounded">
-                <h5 className="font-semibold text-gray-700">Nile Cruise: {booking.nileCruise.name}</h5>
+                <h5 className="font-semibold text-gray-700">
+                  Nile Cruise: {booking.nileCruise.name}
+                </h5>
                 <p>
-                  Check-in: {booking.nileCruise.checkIn} | Check-out: {booking.nileCruise.checkOut}
+                  Check-in: {booking.nileCruise.checkIn} | Check-out:{" "}
+                  {booking.nileCruise.checkOut}
                 </p>
                 <p>Cabin Type: {booking.nileCruise.cabinType}</p>
                 <p>
                   Status:{" "}
                   <span
-                    className={`font-medium ${booking.nileCruise.status === "confirmed" ? "text-green-600" : "text-orange-600"}`}
+                    className={`font-medium ${
+                      booking.nileCruise.status === "confirmed"
+                        ? "text-green-600"
+                        : "text-orange-600"
+                    }`}
                   >
                     {booking.nileCruise.status}
                   </span>
@@ -507,7 +559,9 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Itinerary & Cities */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">3. Itinerary & Cities</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            3. Itinerary & Cities
+          </h3>
           <div className="space-y-4">
             <div>
               <h4 className="font-semibold text-green-600 mb-2">Include:</h4>
@@ -518,7 +572,9 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
               <p className="text-gray-600">{booking.exclude}</p>
             </div>
             <div>
-              <h4 className="font-semibold text-blue-600 mb-2">Special Notice:</h4>
+              <h4 className="font-semibold text-blue-600 mb-2">
+                Special Notice:
+              </h4>
               <p className="text-gray-600">{booking.specialNotice}</p>
             </div>
           </div>
@@ -526,7 +582,9 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Daily Program */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">Daily Program</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            Daily Program
+          </h3>
           <div className="space-y-3">
             {booking.dailyProgram.map((day) => (
               <div key={day.day} className="border-l-4 border-blue-500 pl-4">
@@ -541,7 +599,9 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Meeting & Assist */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">4. Meeting & Assist</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            4. Meeting & Assist
+          </h3>
           <div className="grid grid-cols-2 gap-6">
             <div>
               <p>
@@ -553,10 +613,12 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
             </div>
             <div>
               <p>
-                <strong>Nationality:</strong> {booking.meetingAssist.nationality}
+                <strong>Nationality:</strong>{" "}
+                {booking.meetingAssist.nationality}
               </p>
               <p>
-                <strong>Flight Details:</strong> {booking.meetingAssist.flightDetails}
+                <strong>Flight Details:</strong>{" "}
+                {booking.meetingAssist.flightDetails}
               </p>
             </div>
           </div>
@@ -564,9 +626,14 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Guide Details */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">5. Guide Details</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            5. Guide Details
+          </h3>
           {booking.guides.map((guide, index) => (
-            <div key={index} className="border border-gray-200 p-4 rounded mb-4">
+            <div
+              key={index}
+              className="border border-gray-200 p-4 rounded mb-4"
+            >
               <h4 className="font-semibold text-gray-700 mb-2">
                 Guide {index + 1} - {guide.city}
               </h4>
@@ -590,26 +657,39 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
                     <strong>Children:</strong> {guide.paxChildren}
                   </p>
                   <p>
-                    <strong>Pickup Location:</strong> {guide.pickupHotelLocation}
+                    <strong>Pickup Location:</strong>{" "}
+                    {guide.pickupHotelLocation}
                   </p>
                 </div>
               </div>
             </div>
           ))}
           <div className="bg-gray-50 p-4 rounded mt-4">
-            <h4 className="font-semibold text-gray-700 mb-2">Notes for the Guide</h4>
+            <h4 className="font-semibold text-gray-700 mb-2">
+              Notes for the Guide
+            </h4>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>- Be on time at pickup location.</li>
-              <li>- Follow the program strictly unless client requests changes.</li>
-              <li>- Any extra service requested must be reported to operations team.</li>
-              <li>- Kindly send daily feedback or updates to [Operations Contact / WhatsApp].</li>
+              <li>
+                - Follow the program strictly unless client requests changes.
+              </li>
+              <li>
+                - Any extra service requested must be reported to operations
+                team.
+              </li>
+              <li>
+                - Kindly send daily feedback or updates to [Operations Contact /
+                WhatsApp].
+              </li>
             </ul>
           </div>
         </div>
 
         {/* Transportation */}
         <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">6. Transportation</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            6. Transportation
+          </h3>
           <div className="space-y-3">
             {booking.transportation.map((transport, index) => (
               <div key={index} className="border border-gray-200 p-3 rounded">
@@ -628,7 +708,11 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
                 <p>
                   <strong>Status:</strong>{" "}
                   <span
-                    className={`font-medium ${transport.status === "confirmed" ? "text-green-600" : "text-orange-600"}`}
+                    className={`font-medium ${
+                      transport.status === "confirmed"
+                        ? "text-green-600"
+                        : "text-orange-600"
+                    }`}
                   >
                     {transport.status}
                   </span>
@@ -640,11 +724,17 @@ export function BookingPrintView({ bookingId }: { bookingId: string }) {
 
         {/* Footer */}
         <div className="text-center mt-12 pt-6 border-t border-gray-300">
-          <p className="text-gray-600 font-semibold">Book & Go Travel - Your trusted travel partner</p>
-          <p className="text-sm text-gray-500 mt-2">This document was generated on {new Date().toLocaleDateString()}</p>
-          <p className="text-xs text-gray-400 mt-1">For any inquiries, please contact our operations team</p>
+          <p className="text-gray-600 font-semibold">
+            Book & Go Travel - Your trusted travel partner
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            This document was generated on {new Date().toLocaleDateString()}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            For any inquiries, please contact our operations team
+          </p>
         </div>
       </div>
     </div>
-  )
+  );
 }

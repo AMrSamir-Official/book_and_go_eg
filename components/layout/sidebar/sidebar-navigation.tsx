@@ -12,7 +12,7 @@ import {
   Calculator,
   Calendar,
   DollarSign,
-  FileText,
+  // FileText,
   LayoutDashboard,
   Settings,
 } from "lucide-react";
@@ -32,15 +32,16 @@ const navigationItems = [
     icon: Calendar,
   },
   {
-    title: "invoices",
-    href: "/invoices",
-    icon: FileText,
-  },
-  {
     title: "accounting",
-    href: "/admin/accounting",
+    href: "/invoices",
     icon: Calculator,
+    // icon: FileText,
   },
+  // {
+  //   title: "accounting",
+  //   href: "/admin/accounting",
+  //   icon: Calculator,
+  // },
   {
     title: "dues",
     href: "/dues",

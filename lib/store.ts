@@ -1,38 +1,38 @@
-import { create } from "zustand"
-import { persist, createJSONStorage } from "zustand/middleware"
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 interface AppState {
-  theme: "light" | "dark" | "system"
-  locale: "en" | "ar"
-  sidebarCollapsed: boolean
-  isHydrated: boolean
-  setTheme: (theme: "light" | "dark" | "system") => void
-  setLocale: (locale: "en" | "ar") => void
-  setSidebarCollapsed: (collapsed: boolean) => void
-  toggleSidebar: () => void
-  setHydrated: () => void
+  theme: "light" | "dark" | "system";
+  locale: "en" | "ar";
+  sidebarCollapsed: boolean;
+  isHydrated: boolean;
+  setTheme: (theme: "light" | "dark" | "system") => void;
+  setLocale: (locale: "en" | "ar") => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
+  setHydrated: () => void;
 }
 
 interface DueEntry {
-  id: string
-  type: "owed_to_me" | "i_owe"
-  amount: number
-  currency: "USD" | "EGP"
-  person: string
-  description: string
-  dueDate: string
-  status: "pending" | "paid" | "overdue"
-  createdAt: string
+  id: string;
+  type: "owed_to_me" | "i_owe";
+  amount: number;
+  currency: "USD" | "EGP";
+  person: string;
+  description: string;
+  dueDate: string;
+  status: "pending" | "paid" | "overdue";
+  createdAt: string;
 }
 
 interface DuesState {
-  entries: DueEntry[]
-  addEntry: (entry: Omit<DueEntry, "id" | "createdAt">) => void
-  updateEntry: (id: string, updates: Partial<DueEntry>) => void
-  deleteEntry: (id: string) => void
-  markAsPaid: (id: string) => void
-  getTotalOwedToMe: () => number
-  getTotalIOwe: () => number
+  entries: DueEntry[];
+  addEntry: (entry: Omit<DueEntry, "id" | "createdAt">) => void;
+  updateEntry: (id: string, updates: Partial<DueEntry>) => void;
+  deleteEntry: (id: string) => void;
+  markAsPaid: (id: string) => void;
+  getTotalOwedToMe: () => number;
+  getTotalIOwe: () => number;
 }
 
 // App Store - Theme and Language are completely independent
@@ -41,32 +41,50 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       theme: "system",
       locale: "en",
-      sidebarCollapsed: false,
+      sidebarCollapsed: true,
       isHydrated: false,
       setTheme: (theme) => {
-        set({ theme })
+        set({ theme });
         // Apply theme immediately without affecting locale
         if (typeof window !== "undefined") {
-          const root = window.document.documentElement
-          root.classList.remove("light", "dark")
+          const root = window.document.documentElement;
+          root.classList.remove("light", "dark");
           if (theme === "system") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-            root.classList.add(systemTheme)
+            const systemTheme = window.matchMedia(
+              "(prefers-color-scheme: dark)"
+            ).matches
+              ? "dark"
+              : "light";
+            root.classList.add(systemTheme);
           } else {
-            root.classList.add(theme)
+            root.classList.add(theme);
           }
           // Set cookie for SSR
-          document.cookie = `theme=${theme}; path=/; max-age=31536000`
+          document.cookie = `theme=${theme}; path=/; max-age=31536000`;
         }
       },
       setLocale: (locale) => {
-        set({ locale })
+        set({ locale });
         // Apply locale immediately without affecting theme
         if (typeof window !== "undefined") {
-          document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
-          document.documentElement.lang = locale
+          document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+          document.documentElement.lang = locale;
           // Set cookie for SSR
-          document.cookie = `locale=${locale}; path=/; max-age=31536000`
+          document.cookie = `locale=${locale}; path=/; max-age=31536000`;
+
+          const { theme } = get();
+          const root = window.document.documentElement;
+          root.classList.remove("light", "dark");
+          if (theme === "system") {
+            const systemTheme = window.matchMedia(
+              "(prefers-color-scheme: dark)"
+            ).matches
+              ? "dark"
+              : "light";
+            root.classList.add(systemTheme);
+          } else {
+            root.classList.add(theme);
+          }
         }
       },
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -83,28 +101,32 @@ export const useAppStore = create<AppState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state && typeof window !== "undefined") {
-          const { theme, locale } = state
+          const { theme, locale } = state;
 
           // Apply theme independently
-          const root = window.document.documentElement
-          root.classList.remove("light", "dark")
+          const root = window.document.documentElement;
+          root.classList.remove("light", "dark");
           if (theme === "system") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-            root.classList.add(systemTheme)
+            const systemTheme = window.matchMedia(
+              "(prefers-color-scheme: dark)"
+            ).matches
+              ? "dark"
+              : "light";
+            root.classList.add(systemTheme);
           } else {
-            root.classList.add(theme)
+            root.classList.add(theme);
           }
 
           // Apply locale independently
-          document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
-          document.documentElement.lang = locale
+          document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+          document.documentElement.lang = locale;
 
-          state.setHydrated()
+          state.setHydrated();
         }
       },
-    },
-  ),
-)
+    }
+  )
+);
 
 // Dues & Settlements Store
 export const useDuesStore = create<DuesState>()(
@@ -161,41 +183,47 @@ export const useDuesStore = create<DuesState>()(
           ...entry,
           id: Date.now().toString(),
           createdAt: new Date().toISOString(),
-        }
+        };
         set((state) => ({
           entries: [newEntry, ...state.entries],
-        }))
+        }));
       },
       updateEntry: (id, updates) => {
         set((state) => ({
-          entries: state.entries.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry)),
-        }))
+          entries: state.entries.map((entry) =>
+            entry.id === id ? { ...entry, ...updates } : entry
+          ),
+        }));
       },
       deleteEntry: (id) => {
         set((state) => ({
           entries: state.entries.filter((entry) => entry.id !== id),
-        }))
+        }));
       },
       markAsPaid: (id) => {
-        const { updateEntry } = get()
-        updateEntry(id, { status: "paid" })
+        const { updateEntry } = get();
+        updateEntry(id, { status: "paid" });
       },
       getTotalOwedToMe: () => {
-        const { entries } = get()
+        const { entries } = get();
         return entries
-          .filter((entry) => entry.type === "owed_to_me" && entry.status === "pending")
-          .reduce((total, entry) => total + entry.amount, 0)
+          .filter(
+            (entry) => entry.type === "owed_to_me" && entry.status === "pending"
+          )
+          .reduce((total, entry) => total + entry.amount, 0);
       },
       getTotalIOwe: () => {
-        const { entries } = get()
+        const { entries } = get();
         return entries
-          .filter((entry) => entry.type === "i_owe" && entry.status === "pending")
-          .reduce((total, entry) => total + entry.amount, 0)
+          .filter(
+            (entry) => entry.type === "i_owe" && entry.status === "pending"
+          )
+          .reduce((total, entry) => total + entry.amount, 0);
       },
     }),
     {
       name: "dues-storage",
       storage: createJSONStorage(() => localStorage),
-    },
-  ),
-)
+    }
+  )
+);

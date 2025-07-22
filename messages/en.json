@@ -90,7 +90,7 @@
     "view": "View",
     "edit": "Edit",
     "delete": "Delete",
-    "createInvoice": "Create Invoice",
+    "createInvoice": "Create Accounting",
     "print": "Print",
     "sendWhatsApp": "Send to WhatsApp",
     "basicInfo": "Basic Information",
@@ -172,7 +172,7 @@
     "grandTotalIncome": "Grand Total Income",
     "grandTotalExpenses": "Grand Total Expenses",
     "restProfit": "Rest Profit",
-    "createInvoice": "Create Invoice",
+    "createInvoice": "Create Accounting",
     "updateInvoice": "Update Invoice"
   },
   "accounting": {

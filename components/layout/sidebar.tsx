@@ -36,7 +36,7 @@ const navigation = [
     roles: ["admin", "user"],
   },
   {
-    name: "invoices",
+    name: "Accounting",
     href: "/invoices",
     icon: FileText,
     roles: ["admin", "user"],

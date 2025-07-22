@@ -1,20 +1,24 @@
-"use client"
+"use client";
 
-import { memo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Printer, MessageSquare, FileText, Edit } from "lucide-react"
-import Link from "next/link"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Edit, FileText, MessageSquare, Printer } from "lucide-react";
+import Link from "next/link";
+import { memo } from "react";
 
 interface BookingSidebarProps {
-  booking: any
-  onPrint: () => void
-  onWhatsApp: () => void
+  booking: any;
+  onPrint: () => void;
+  onWhatsApp: () => void;
 }
 
-export const BookingSidebar = memo(function BookingSidebar({ booking, onPrint, onWhatsApp }: BookingSidebarProps) {
+export const BookingSidebar = memo(function BookingSidebar({
+  booking,
+  onPrint,
+  onWhatsApp,
+}: BookingSidebarProps) {
   return (
     <div className="space-y-6">
       {/* Status Card */}
@@ -23,7 +27,10 @@ export const BookingSidebar = memo(function BookingSidebar({ booking, onPrint, o
           <CardTitle>Booking Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <Badge variant={booking.status === "confirmed" ? "default" : "secondary"} className="text-lg px-4 py-2">
+          <Badge
+            variant={booking.status === "confirmed" ? "default" : "secondary"}
+            className="text-lg px-4 py-2"
+          >
             {booking.status}
           </Badge>
           <Separator className="my-4" />
@@ -50,18 +57,29 @@ export const BookingSidebar = memo(function BookingSidebar({ booking, onPrint, o
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button variant="outline" className="w-full justify-start bg-transparent" onClick={onPrint}>
+          <Button
+            variant="outline"
+            className="w-full justify-start bg-transparent"
+            onClick={onPrint}
+          >
             <Printer className="mr-2 h-4 w-4" />
             Print Booking
           </Button>
-          <Button variant="outline" className="w-full justify-start bg-transparent" onClick={onWhatsApp}>
+          <Button
+            variant="outline"
+            className="w-full justify-start bg-transparent"
+            onClick={onWhatsApp}
+          >
             <MessageSquare className="mr-2 h-4 w-4" />
             Send via WhatsApp
           </Button>
           <Link href={`/invoices/new?booking=${booking.id}`} className="block">
-            <Button variant="outline" className="w-full justify-start bg-transparent">
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-transparent"
+            >
               <FileText className="mr-2 h-4 w-4" />
-              Create Invoice
+              Create accounting
             </Button>
           </Link>
           <Link href={`/bookings/${booking.id}/edit`} className="block">
@@ -94,5 +112,5 @@ export const BookingSidebar = memo(function BookingSidebar({ booking, onPrint, o
         </CardContent>
       </Card>
     </div>
-  )
-})
+  );
+});

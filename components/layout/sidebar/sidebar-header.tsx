@@ -1,16 +1,18 @@
-"use client"
+"use client";
 
-import { memo } from "react"
-import { Button } from "@/components/ui/button"
-import { useAppStore } from "@/lib/store"
-import { Plane, ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/lib/store";
+import { ChevronLeft, ChevronRight, Plane } from "lucide-react";
+import { memo } from "react";
 
 interface SidebarHeaderProps {
-  collapsed: boolean
+  collapsed: boolean;
 }
 
-export const SidebarHeader = memo(function SidebarHeader({ collapsed }: SidebarHeaderProps) {
-  const { toggleSidebar } = useAppStore()
+export const SidebarHeader = memo(function SidebarHeader({
+  collapsed,
+}: SidebarHeaderProps) {
+  const { toggleSidebar } = useAppStore();
 
   return (
     <div className="flex h-16 items-center justify-between px-4 border-b">
@@ -20,9 +22,18 @@ export const SidebarHeader = memo(function SidebarHeader({ collapsed }: SidebarH
           <span className="font-bold text-lg">Book & Go</span>
         </div>
       )}
-      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-8 w-8 shrink-0">
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleSidebar}
+        className="h-8 w-8 shrink-0"
+      >
+        {collapsed ? (
+          <ChevronRight className="h-4 w-4" />
+        ) : (
+          <ChevronLeft className="h-4 w-4" />
+        )}
       </Button>
     </div>
-  )
-})
+  );
+});

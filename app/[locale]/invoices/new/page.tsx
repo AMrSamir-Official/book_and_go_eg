@@ -270,7 +270,7 @@ export default function NewInvoicePage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">{t("createInvoice")}</h1>
             <p className="text-muted-foreground">
@@ -476,7 +476,7 @@ export default function NewInvoicePage() {
 
               {/* Extra Incoming */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap">
                   <h4 className="text-lg font-semibold">Extra Incoming</h4>
                   <Button
                     type="button"
@@ -622,8 +622,8 @@ export default function NewInvoicePage() {
             <CardContent className="space-y-8">
               {/* 1- Accommodation */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-semibold">1- Accommodation</h4>
+                <div className="flex items-center justify-between flex-wrap">
+                  <h4 className="text-lg font-semibold">1-Accommodation</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -979,7 +979,7 @@ export default function NewInvoicePage() {
 
               {/* Transportation */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap">
                   <h4 className="text-lg font-semibold">Transportation</h4>
                   <Button
                     type="button"

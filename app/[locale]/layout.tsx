@@ -37,7 +37,10 @@ export default async function RootLayout({
       className={savedTheme === "system" ? "" : savedTheme}
       suppressHydrationWarning
     >
-      <body className={inter.className} suppressHydrationWarning>
+      <body
+        className={inter.className + " overflow-hidden"}
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
             attribute="class"

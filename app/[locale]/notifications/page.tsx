@@ -286,14 +286,14 @@ export default function NotificationsPage() {
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 overflow-hidden">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start space-x-3 flex-1">
                           <div className="mt-1">
                             {getNotificationIcon(notification.type)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h4
                                 className={`font-semibold ${
                                   !notification.read ? "text-primary" : ""

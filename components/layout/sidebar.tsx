@@ -12,7 +12,6 @@ import {
   ChevronRight,
   FileText,
   LayoutDashboard,
-  Mail,
   Plane,
   Settings,
   Users,
@@ -53,12 +52,12 @@ export const navigation = [
     icon: Users,
     roles: ["admin"],
   },
-  {
-    name: "emails",
-    href: "/admin/emails",
-    icon: Mail,
-    roles: ["admin"],
-  },
+  // {
+  //   name: "emails",
+  //   href: "/admin/emails",
+  //   icon: Mail,
+  //   roles: ["admin"],
+  // },
   {
     name: "settings",
     href: "/admin/settings",

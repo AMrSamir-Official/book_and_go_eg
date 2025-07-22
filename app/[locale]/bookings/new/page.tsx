@@ -24,26 +24,25 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { downloadPDF, shareToWhatsApp } from "@/lib/pdf-utils";
+import { useBookingFormStore } from "@/lib/store";
+// import { downloadPDF, shareToWhatsApp } from "@/lib/pdf-utils";
 import {
   ArrowLeft,
-  Download,
   Hotel,
   MapPin,
-  MessageSquare,
   Minus,
   Plane,
   Plus,
-  Printer,
   Save,
   Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 
-interface BookingFormData {
+export interface BookingFormData {
   // Basic Information
   fileNumber: string;
   supplier: string;
@@ -157,7 +156,7 @@ interface BookingFormData {
   }>;
 }
 
-const vanTypes = [
+export const vanTypes = [
   { id: "limousine", name: "Limousine", capacity: 3 },
   { id: "h1", name: "H1", capacity: 7 },
   { id: "hiace", name: "Hiace", capacity: 12 },
@@ -307,71 +306,19 @@ export default function NewBookingPage() {
     append: appendGuide,
     remove: removeGuide,
   } = useFieldArray({ control, name: "guides" });
-
+  const { setBookingData } = useBookingFormStore();
   const onSubmit = (data: BookingFormData) => {
-    console.log("Booking Data:", data);
+    console.log("Booking Data saved ");
+    setBookingData(data);
     toast({
-      title: "Booking Created",
-      description:
-        "Your booking has been created successfully! Redirecting to accounting...",
+      title: "you now will add Accounting data",
+      description: "Please Complet the next Step ...",
     });
 
     // Redirect to accounting page for this booking
     setTimeout(() => {
-      router.push(`/admin/accounting?booking=${data.fileNumber}`);
+      router.push(`/admin/booking/new/accounting`);
     }, 1500);
-  };
-
-  const handlePrintBooking = async () => {
-    if (!printRef.current) return;
-
-    setIsGeneratingPDF(true);
-    try {
-      await downloadPDF(printRef.current, `booking-${watch("fileNumber")}.pdf`);
-      toast({
-        title: "PDF Generated",
-        description: "Booking summary has been downloaded successfully!",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
-  const handleWhatsAppShare = async () => {
-    if (!printRef.current) return;
-
-    setIsGeneratingPDF(true);
-    try {
-      const formData = watch();
-      const message = `🎫 *NEW BOOKING CREATED*
-
-📋 File: ${formData.fileNumber}
-🏢 Supplier: ${formData.supplier}
-👥 Pax: ${formData.paxCount}
-📅 ${formData.arrivalDate} - ${formData.departureDate}
-
-📄 Complete booking details attached.`;
-
-      await shareToWhatsApp(printRef.current, message);
-      toast({
-        title: "Shared to WhatsApp",
-        description: "Booking summary has been shared successfully!",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to share to WhatsApp. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingPDF(false);
-    }
   };
 
   return (
@@ -391,7 +338,7 @@ export default function NewBookingPage() {
               <p className="text-muted-foreground">Book & Go Travel</p>
             </div>
           </div>
-          <div className="flex space-x-2 no-print flex-wrap">
+          {/* <div className="flex space-x-2 no-print flex-wrap">
             <Button
               variant="outline"
               onClick={handlePrintBooking}
@@ -417,7 +364,7 @@ export default function NewBookingPage() {
               <MessageSquare className="mr-2 h-4 w-4" />
               Send WhatsApp
             </Button>
-          </div>
+          </div> */}
         </div>
 
         {/* Printable Content */}
@@ -1108,12 +1055,12 @@ export default function NewBookingPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end no-print">
+                {/* <div className="flex justify-end no-print">
                   <Button variant="outline" onClick={handlePrintBooking}>
                     <Printer className="mr-2 h-4 w-4" />
                     Make PDF
                   </Button>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
 
@@ -1593,7 +1540,7 @@ export default function NewBookingPage() {
                   </Select>
                 </div>
 
-                <div className="flex space-x-4 no-print flex-wrap">
+                {/* <div className="flex space-x-4 no-print flex-wrap">
                   <Button
                     type="button"
                     variant="outline"
@@ -1611,7 +1558,7 @@ export default function NewBookingPage() {
                     <Printer className="mr-2 h-4 w-4" />
                     Print service order
                   </Button>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
 
@@ -1866,7 +1813,9 @@ export default function NewBookingPage() {
             <div className="flex justify-center no-print">
               <Button type="submit" size="lg" className="px-8">
                 <Save className="mr-2 h-5 w-5" />
-                Create Booking & Go to Accounting
+                <Link href="/admin/booking/new/accounting">
+                  Create Booking & Go to Accounting
+                </Link>
               </Button>
             </div>
           </form>

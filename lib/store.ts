@@ -1,3 +1,4 @@
+import { BookingFormData } from "@/app/[locale]/bookings/new/page";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -127,7 +128,29 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+//when make booking
+interface BookingFormState {
+  data: BookingFormData | null;
+  setBookingData: (data: BookingFormData) => void;
+  clearBookingData: () => void;
+}
 
+export const useBookingFormStore = create<BookingFormState>()(
+  persist(
+    (set) => ({
+      data: null,
+      setBookingData: (data) => set({ data }),
+      clearBookingData: () => set({ data: null }),
+    }),
+    {
+      name: "booking-form-storage",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        data: state.data,
+      }),
+    }
+  )
+);
 // Dues & Settlements Store
 export const useDuesStore = create<DuesState>()(
   persist(

@@ -1,65 +1,79 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { useForm } from "react-hook-form"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Eye, EyeOff } from "lucide-react"
-import { useAuthStore } from "@/lib/auth"
-import { authenticateUser } from "@/lib/auth"
-import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { authenticateUser, useAuthStore } from "@/lib/auth";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface LoginFormData {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
 export default function LoginPage() {
-  const t = useTranslations("auth")
-  const tCommon = useTranslations("common")
-  const router = useRouter()
-  const { login, setLoading } = useAuthStore()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")
+  const { isAuthenticated } = useAuthStore();
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated]);
+  const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
+  const router = useRouter();
+  const { login, setLoading } = useAuthStore();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>()
+  } = useForm<LoginFormData>();
 
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
-    setLoading(true)
-    setError("")
-
+    setIsLoading(true);
+    setLoading(true);
+    setError("");
+    console.log("A. Form submitted. Calling authenticateUser...");
     try {
-      const user = await authenticateUser(data.email, data.password)
-
+      const user = await authenticateUser(data.email, data.password);
+      console.log("B. Received response from authenticateUser:", user);
       if (user) {
-        login(user)
+        console.log("C. Login success! Updating state and redirecting...");
+        login(user);
         toast({
           title: "Welcome back!",
           description: `Successfully logged in as ${user.name}`,
-        })
-        router.push("/dashboard")
+        });
+        router.push("/dashboard");
       } else {
-        setError("Invalid email or password. Please try again.")
+        console.log("C. Login failed. User is null.");
+        setError("Invalid email or password. Please try again.");
       }
     } catch (error) {
-      setError("An error occurred during login. Please try again.")
+      console.error("!!! UNEXPECTED ERROR in onSubmit:", error);
+      setError("An error occurred during login. Please try again.");
     } finally {
-      setIsLoading(false)
-      setLoading(false)
+      setIsLoading(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
@@ -96,7 +110,11 @@ export default function LoginPage() {
                 })}
                 disabled={isLoading}
               />
-              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              {errors.email && (
+                <p className="text-sm text-destructive">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -123,10 +141,18 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
-              {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+              {errors.password && (
+                <p className="text-sm text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -155,5 +181,5 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

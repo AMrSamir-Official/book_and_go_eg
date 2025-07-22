@@ -22,7 +22,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const navigation = [
+export const navigation = [
   {
     name: "dashboard",
     href: "/dashboard",
@@ -36,7 +36,7 @@ const navigation = [
     roles: ["admin", "user"],
   },
   {
-    name: "Accounting",
+    name: "accounting",
     href: "/invoices",
     icon: FileText,
     roles: ["admin", "user"],

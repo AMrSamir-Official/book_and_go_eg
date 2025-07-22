@@ -7,6 +7,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuthStore } from "@/lib/auth";
 import {
   Bell,
   Calculator,
@@ -19,6 +20,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { navigation } from "../sidebar";
 
 const navigationItems = [
   {
@@ -62,23 +64,30 @@ const navigationItems = [
 export function SidebarNavigation() {
   const t = useTranslations("navigation");
   const pathname = usePathname();
+  const { user, logout } = useAuthStore();
 
   return (
     <SidebarGroup>
       <SidebarGroupContent>
         <SidebarMenu>
-          {navigationItems.map((item) => {
+          {navigation.map((item) => {
             const isActive = pathname.includes(item.href);
-            return (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild isActive={isActive}>
-                  <Link href={item.href}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{t(item.title)}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
+
+            // Only show items for admin users (you can adjust this logic if needed)
+            if (user?.role && item.roles.includes(user.role)) {
+              return (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={isActive}>
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{t(item.name)}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            }
+
+            return null;
           })}
         </SidebarMenu>
       </SidebarGroupContent>

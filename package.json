@@ -46,6 +46,8 @@
     "html2canvas": "latest",
     "immer": "latest",
     "input-otp": "1.4.1",
+    "jose": "^6.0.12",
+    "js-cookie": "^3.0.5",
     "jspdf": "latest",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.454.0",
@@ -67,6 +69,8 @@
     "zustand": "latest"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

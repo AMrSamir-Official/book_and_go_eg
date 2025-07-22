@@ -1,66 +1,69 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useEffect, useState } from "react"
-import { useRouter, usePathname } from "next/navigation"
-import { useAuthStore } from "@/lib/auth"
-import { Loader2 } from "lucide-react"
+import { useAuthStore } from "@/lib/auth";
+import { Loader2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface RouteGuardProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function RouteGuard({ children }: RouteGuardProps) {
-  const { isAuthenticated, canAccessRoute, isLoading, setLoading } = useAuthStore()
-  const router = useRouter()
-  const pathname = usePathname()
-  const [isChecking, setIsChecking] = useState(true)
+  const { isAuthenticated, canAccessRoute, isLoading, setLoading } =
+    useAuthStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
-      setLoading(true)
+      setLoading(true);
 
       // Check for auth cookie (for SSR compatibility)
-      const hasAuthCookie = document.cookie.includes("auth-token=authenticated")
+      const hasAuthCookie = document.cookie.includes(
+        "auth-token=authenticated"
+      );
 
       // Remove locale from pathname for route checking
-      const routePath = pathname.replace(/^\/[a-z]{2}/, "") || "/"
+      const routePath = pathname.replace(/^\/[a-z]{2}/, "") || "/";
 
       // Public routes that don't require authentication
-      const publicRoutes = ["/login", "/"]
-      const isPublicRoute = publicRoutes.includes(routePath)
+      const publicRoutes = ["/login", "/"];
+      const isPublicRoute = publicRoutes.includes(routePath);
 
       // If not authenticated and trying to access protected route
       if (!isAuthenticated && !hasAuthCookie && !isPublicRoute) {
-        router.push("/login")
-        setLoading(false)
-        setIsChecking(false)
-        return
+        router.push("/login");
+        setLoading(false);
+        setIsChecking(false);
+        return;
       }
 
       // If authenticated but can't access specific route
       if ((isAuthenticated || hasAuthCookie) && !canAccessRoute(routePath)) {
-        router.push("/dashboard")
-        setLoading(false)
-        setIsChecking(false)
-        return
+        router.push("/dashboard");
+        setLoading(false);
+        setIsChecking(false);
+        return;
       }
 
       // If authenticated and trying to access login page
       if ((isAuthenticated || hasAuthCookie) && routePath === "/login") {
-        router.push("/dashboard")
-        setLoading(false)
-        setIsChecking(false)
-        return
+        router.push("/dashboard");
+        setLoading(false);
+        setIsChecking(false);
+        return;
       }
 
-      setLoading(false)
-      setIsChecking(false)
-    }
+      setLoading(false);
+      setIsChecking(false);
+    };
 
-    checkAuth()
-  }, [isAuthenticated, canAccessRoute, pathname, router, setLoading])
+    checkAuth();
+  }, [isAuthenticated, canAccessRoute, pathname, router, setLoading]);
 
   if (isLoading || isChecking) {
     return (
@@ -70,8 +73,8 @@ export function RouteGuard({ children }: RouteGuardProps) {
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

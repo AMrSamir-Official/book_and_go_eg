@@ -5,6 +5,9 @@
     "invoices": "Invoices",
     "notifications": "Notifications",
     "settings": "Settings",
+    "emails": "emails",
+    "users": "users",
+
     "accounting": "Accounting",
     "dues": "Dues & Settlements"
   },

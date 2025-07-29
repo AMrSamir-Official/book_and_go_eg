@@ -1,5 +1,6 @@
 "use client";
 
+import { logoutAction } from "@/app/actions/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,18 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuthStore } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import { Bell, Globe, LogOut, Moon, Sun } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 
-export function Header() {
+export async function Header() {
   const { theme, setTheme } = useTheme();
   const t = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  // const { user, logout } = useAuthStore();
 
   const handleLocaleChange = (newLocale: string) => {
     const currentPath = window.location.pathname;
@@ -30,10 +31,11 @@ export function Header() {
   };
 
   const handleLogout = () => {
-    logout();
+    logoutAction();
     router.push("/login");
   };
-
+  const user = await getCurrentUser();
+  console.log("user data is : ", user);
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
       {/* <div className="flex items-center space-x-4">

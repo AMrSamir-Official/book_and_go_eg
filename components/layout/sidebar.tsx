@@ -10,6 +10,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
   FileText,
   LayoutDashboard,
   Plane,
@@ -52,6 +53,18 @@ export const navigation = [
     icon: Users,
     roles: ["admin"],
   },
+  {
+    name: "dues",
+    href: "/dues",
+    roles: ["admin"],
+    icon: DollarSign,
+  },
+  // {
+  //   name: "dues",
+  //   href: "/dues",
+  //   icon: DollarSign,
+  //   roles: ["admin"],
+  // },
   // {
   //   name: "emails",
   //   href: "/admin/emails",

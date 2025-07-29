@@ -64,7 +64,7 @@ const navigationItems = [
 export function SidebarNavigation() {
   const t = useTranslations("navigation");
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   return (
     <SidebarGroup>

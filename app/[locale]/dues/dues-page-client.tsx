@@ -1,19 +1,15 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { DashboardLayout } from "@/components/layout/dashboard-layout"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,205 +18,380 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useDuesStore } from "@/lib/store"
+} from "@/components/ui/dialog";
 import {
-  Plus,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from "@/lib/auth";
+import { createApiClient } from "@/lib/axios";
+import {
+  AlertTriangle,
   Calendar,
   CheckCircle,
-  AlertTriangle,
   Clock,
-} from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+  DollarSign,
+  Edit,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  ShieldAlert,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-interface DueFormData {
-  type: "owed_to_me" | "i_owe"
-  amount: number
-  currency: "USD" | "EGP"
-  person: string
-  description: string
-  dueDate: string
+// Data structure from your API
+interface ApiDue {
+  id?: string;
+  _id: string;
+  type: "receive" | "pay";
+  name: string;
+  amount: number;
+  currency: "USD" | "EGP";
+  dueDate: string;
+  status: "Pending" | "Paid";
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
+// Type for display, including the 'overdue' status
+interface DisplayDue extends ApiDue {
+  id: string;
+  status: "Pending" | "Paid" | "overdue";
+}
+
+// Data structure for the form
+interface DueFormData {
+  type: "receive" | "pay";
+  name: string;
+  amount: number;
+  currency: "USD" | "EGP";
+  notes: string;
+  dueDate: string;
+}
+
+const apiClient = createApiClient();
+
 export function DuesPageClient() {
-  const t = useTranslations("common")
-  const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const highlightId = searchParams.get("highlight")
-  const { entries, addEntry, updateEntry, deleteEntry, markAsPaid, getTotalOwedToMe, getTotalIOwe } = useDuesStore()
+  const t = useTranslations("common");
+  const { toast } = useToast();
+  const { user, isLoading: isAuthLoading } = useAuthStore();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingEntry, setEditingEntry] = useState<string | null>(null)
-  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "paid" | "overdue">("all")
-  const [filterType, setFilterType] = useState<"all" | "owed_to_me" | "i_owe">("all")
+  // --- DEBUGGING LOG ---
+  console.log("[DuesPageClient] Store state:", { user, isAuthLoading });
+
+  const [dues, setDues] = useState<ApiDue[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [formData, setFormData] = useState<DueFormData>({
-    type: "owed_to_me",
+    type: "receive",
     amount: 0,
-    currency: "USD",
-    person: "",
-    description: "",
+    currency: "EGP",
+    name: "",
+    notes: "",
     dueDate: "",
-  })
+  });
 
-  // Highlight effect for notifications
-  useEffect(() => {
-    if (highlightId) {
-      const element = document.getElementById(`due-${highlightId}`)
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" })
-        element.classList.add("ring-2", "ring-primary", "ring-offset-2")
-        setTimeout(() => {
-          element.classList.remove("ring-2", "ring-primary", "ring-offset-2")
-        }, 3000)
-      }
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "Pending" | "Paid" | "overdue"
+  >("all");
+  const [filterType, setFilterType] = useState<"all" | "receive" | "pay">(
+    "all"
+  );
+
+  const fetchDues = useCallback(async () => {
+    // --- DEBUGGING LOG ---
+    const tokenAtFetchTime = useAuthStore.getState().token;
+    console.log(
+      "[DuesPageClient] Attempting to fetch dues. Token at this moment:",
+      tokenAtFetchTime
+    );
+
+    if (!tokenAtFetchTime) {
+      console.error("STOP! Token is missing right before API call.");
+      toast({
+        title: "Authentication Error",
+        description: "User token is missing. Cannot fetch data.",
+        variant: "destructive",
+      });
+      setIsDataLoading(false);
+      return;
     }
-  }, [highlightId])
+
+    setIsDataLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get("/dues");
+      console.log("[DuesPageClient] API response received:", response.data);
+      setDues(response.data.data || []);
+    } catch (err) {
+      console.error("[DuesPageClient] API fetch failed:", err);
+      setError("Failed to fetch dues. Please try again later.");
+      toast({
+        title: "Error",
+        description: "Could not fetch dues. Check console for details.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    // --- DEBUGGING LOG ---
+    console.log(
+      `[DuesPageClient] useEffect triggered. isAuthLoading: ${isAuthLoading}, User role: ${user?.role}`
+    );
+
+    if (isAuthLoading) {
+      console.log("[DuesPageClient] Auth is loading, waiting...");
+      return;
+    }
+    if (user?.role === "admin") {
+      console.log(
+        "[DuesPageClient] Auth loaded and user is admin. Calling fetchDues."
+      );
+      fetchDues();
+    } else {
+      console.log(
+        "[DuesPageClient] Auth loaded but user is not admin or not logged in."
+      );
+      setIsDataLoading(false);
+    }
+  }, [isAuthLoading, user, fetchDues]);
 
   const resetForm = () => {
     setFormData({
-      type: "owed_to_me",
+      type: "receive",
       amount: 0,
-      currency: "USD",
-      person: "",
-      description: "",
+      currency: "EGP",
+      name: "",
+      notes: "",
       dueDate: "",
-    })
-    setEditingEntry(null)
-  }
+    });
+    setEditingEntryId(null);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.person || !formData.description || !formData.dueDate || formData.amount <= 0) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !formData.name ||
+      !formData.notes ||
+      !formData.dueDate ||
+      formData.amount <= 0
+    ) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields with valid values.",
+        description: "Please fill in all required fields.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-
-    if (editingEntry) {
-      updateEntry(editingEntry, formData)
+    setIsSubmitting(true);
+    try {
+      if (editingEntryId) {
+        await apiClient.put(`/dues/${editingEntryId}`, formData);
+        toast({
+          title: "Entry Updated",
+          description: "The due entry has been updated.",
+        });
+      } else {
+        await apiClient.post("/dues", formData);
+        toast({
+          title: "Entry Added",
+          description: "New due entry has been added.",
+        });
+      }
+      await fetchDues();
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (err) {
       toast({
-        title: "Entry Updated",
-        description: "The due entry has been updated successfully.",
-      })
-    } else {
-      addEntry(formData)
-      toast({
-        title: "Entry Added",
-        description: "New due entry has been added successfully.",
-      })
+        title: "Submission Error",
+        description: "An error occurred while saving the entry.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    resetForm()
-    setIsDialogOpen(false)
-  }
-
-  const handleEdit = (entry: any) => {
+  const handleEdit = (entry: ApiDue) => {
     setFormData({
       type: entry.type,
       amount: entry.amount,
       currency: entry.currency,
-      person: entry.person,
-      description: entry.description,
-      dueDate: entry.dueDate,
-    })
-    setEditingEntry(entry.id)
-    setIsDialogOpen(true)
-  }
+      name: entry.name,
+      notes: entry.notes,
+      dueDate: entry.dueDate.split("T")[0],
+    });
+    setEditingEntryId(entry._id || entry.id);
+    setIsDialogOpen(true);
+  };
 
-  const handleDelete = (id: string) => {
-    deleteEntry(id)
-    toast({
-      title: "Entry Deleted",
-      description: "The due entry has been removed.",
-    })
-  }
-
-  const handleMarkAsPaid = (id: string) => {
-    markAsPaid(id)
-    toast({
-      title: "Marked as Paid",
-      description: "The payment has been marked as complete.",
-    })
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "default"
-      case "pending":
-        return "secondary"
-      case "overdue":
-        return "destructive"
-      default:
-        return "outline"
+  const handleDelete = async (id: string) => {
+    try {
+      await apiClient.delete(`/dues/${id}`);
+      toast({
+        title: "Entry Deleted",
+        description: "The due entry has been removed.",
+      });
+      await fetchDues();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Could not delete the entry.",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "paid":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "overdue":
-        return <AlertTriangle className="h-4 w-4 text-red-500" />
-      default:
-        return <Clock className="h-4 w-4 text-yellow-500" />
+  const handleMarkAsPaid = async (id: string) => {
+    try {
+      await apiClient.patch(`/dues/${id}/pay`);
+      toast({
+        title: "Marked as Paid",
+        description: "The payment has been marked as complete.",
+      });
+      await fetchDues();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Could not mark the entry as paid.",
+        variant: "destructive",
+      });
     }
+  };
+
+  const filteredEntries: DisplayDue[] = useMemo(() => {
+    const isOverdue = (dueDate: string, status: string): boolean =>
+      status !== "Paid" && new Date(dueDate) < new Date();
+    return dues
+      .map((entry) => ({
+        ...entry,
+        status: isOverdue(entry.dueDate, entry.status)
+          ? "overdue"
+          : entry.status,
+      }))
+      .filter((entry) => {
+        const statusMatch =
+          filterStatus === "all" || entry.status === filterStatus;
+        const typeMatch = filterType === "all" || entry.type === filterType;
+        return statusMatch && typeMatch;
+      });
+  }, [dues, filterStatus, filterType]);
+
+  const [totalReceive, totalPay] = useMemo(() => {
+    return dues
+      .filter((d) => d.status === "Pending")
+      .reduce(
+        ([receive, pay], due) => {
+          if (due.type === "receive") return [receive + due.amount, pay];
+          return [receive, pay + due.amount];
+        },
+        [0, 0]
+      );
+  }, [dues]);
+
+  const netBalance = totalReceive - totalPay;
+
+  if (isAuthLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
   }
 
-  const isOverdue = (dueDate: string, status: string) => {
-    if (status === "paid") return false
-    return new Date(dueDate) < new Date()
+  if (user?.role !== "admin") {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p className="text-muted-foreground">
+            You do not have permission to view this page.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
-  const filteredEntries = entries
-    .filter((entry) => {
-      const statusMatch =
-        filterStatus === "all" ||
-        (filterStatus === "overdue" ? isOverdue(entry.dueDate, entry.status) : entry.status === filterStatus)
-      const typeMatch = filterType === "all" || entry.type === filterType
-      return statusMatch && typeMatch
-    })
-    .map((entry) => ({
-      ...entry,
-      status: isOverdue(entry.dueDate, entry.status) ? "overdue" : entry.status,
-    }))
-
-  const totalOwedToMe = getTotalOwedToMe()
-  const totalIOwe = getTotalIOwe()
-  const netBalance = totalOwedToMe - totalIOwe
+  const getStatusColor = (status: string) =>
+    status === "Paid"
+      ? "default"
+      : status === "Pending"
+      ? "secondary"
+      : "destructive";
+  const getStatusIcon = (status: string) =>
+    status === "Paid" ? (
+      <CheckCircle className="h-4 w-4 text-green-500" />
+    ) : status === "overdue" ? (
+      <AlertTriangle className="h-4 w-4 text-red-500" />
+    ) : (
+      <Clock className="h-4 w-4 text-yellow-500" />
+    );
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold">Dues & Settlements</h1>
-            <p className="text-muted-foreground">Track payments owed to you and payments you owe</p>
+            <h1 className="text-2xl lg:text-3xl font-bold">
+              Dues & Settlements
+            </h1>
+            <p className="text-muted-foreground">
+              Track payments owed to you and payments you owe
+            </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add New Entry
+                <Plus className="mr-2 h-4 w-4" /> Add New Entry
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>{editingEntry ? "Edit Entry" : "Add New Entry"}</DialogTitle>
+                <DialogTitle>
+                  {editingEntryId ? "Edit Entry" : "Add New Entry"}
+                </DialogTitle>
                 <DialogDescription>
-                  {editingEntry ? "Update the due entry details." : "Add a new payment due entry."}
+                  {editingEntryId
+                    ? "Update the due entry details."
+                    : "Add a new payment due entry."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -228,18 +399,19 @@ export function DuesPageClient() {
                   <Label htmlFor="type">Type</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: "owed_to_me" | "i_owe") => setFormData({ ...formData, type: value })}
+                    onValueChange={(value: "receive" | "pay") =>
+                      setFormData({ ...formData, type: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owed_to_me">Owed to Me</SelectItem>
-                      <SelectItem value="i_owe">I Owe</SelectItem>
+                      <SelectItem value="receive">Owed to Me</SelectItem>
+                      <SelectItem value="pay">I Owe</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="amount">Amount</Label>
@@ -247,7 +419,12 @@ export function DuesPageClient() {
                       id="amount"
                       type="number"
                       value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          amount: Number(e.target.value),
+                        })
+                      }
                       placeholder="0"
                       min="0"
                       step="0.01"
@@ -258,133 +435,169 @@ export function DuesPageClient() {
                     <Label htmlFor="currency">Currency</Label>
                     <Select
                       value={formData.currency}
-                      onValueChange={(value: "USD" | "EGP") => setFormData({ ...formData, currency: value })}
+                      onValueChange={(value: "USD" | "EGP") =>
+                        setFormData({ ...formData, currency: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
                         <SelectItem value="EGP">EGP</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-
                 <div>
-                  <Label htmlFor="person">Person/Company</Label>
+                  <Label htmlFor="name">Person/Company</Label>
                   <Input
-                    id="person"
-                    value={formData.person}
-                    onChange={(e) => setFormData({ ...formData, person: e.target.value })}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="Enter person or company name"
                     required
                   />
                 </div>
-
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="notes">Description</Label>
                   <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
                     placeholder="Enter description of the payment"
                     required
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="dueDate">Due Date</Label>
                   <Input
                     id="dueDate"
                     type="date"
                     value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dueDate: e.target.value })
+                    }
                     required
                   />
                 </div>
-
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isSubmitting}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit">{editingEntry ? "Update Entry" : "Add Entry"}</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting
+                      ? "Saving..."
+                      : editingEntryId
+                      ? "Update Entry"
+                      : "Add Entry"}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Owed to Me</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Owed to Me (Pending)
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${totalOwedToMe.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                {entries.filter((e) => e.type === "owed_to_me" && e.status === "pending").length} pending payments
-              </p>
+              {isDataLoading ? (
+                <Skeleton className="h-8 w-3/4" />
+              ) : (
+                <div className="text-2xl font-bold text-green-600">
+                  {totalReceive.toLocaleString()} EGP
+                </div>
+              )}
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">I Owe</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                I Owe (Pending)
+              </CardTitle>
               <TrendingDown className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">${totalIOwe.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                {entries.filter((e) => e.type === "i_owe" && e.status === "pending").length} pending payments
-              </p>
+              {isDataLoading ? (
+                <Skeleton className="h-8 w-3/4" />
+              ) : (
+                <div className="text-2xl font-bold text-red-600">
+                  {totalPay.toLocaleString()} EGP
+                </div>
+              )}
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
               <DollarSign className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${netBalance >= 0 ? "text-green-600" : "text-red-600"}`}>
-                ${Math.abs(netBalance).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">{netBalance >= 0 ? "Net positive" : "Net negative"}</p>
+              {isDataLoading ? (
+                <Skeleton className="h-8 w-3/4" />
+              ) : (
+                <div
+                  className={`text-2xl font-bold ${
+                    netBalance >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {Math.abs(netBalance).toLocaleString()} EGP
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters and Table */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
               <div>
                 <CardTitle>All Entries</CardTitle>
-                <CardDescription>Manage your payment dues and settlements</CardDescription>
+                <CardDescription>
+                  Manage your payment dues and settlements
+                </CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                <Select
+                  value={filterStatus}
+                  onValueChange={(value: any) => setFilterStatus(value)}
+                >
                   <SelectTrigger className="w-32">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Paid">Paid</SelectItem>
                     <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                <Select
+                  value={filterType}
+                  onValueChange={(value: any) => setFilterType(value)}
+                >
                   <SelectTrigger className="w-32">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="owed_to_me">Owed to Me</SelectItem>
-                    <SelectItem value="i_owe">I Owe</SelectItem>
+                    <SelectItem value="receive">Owed to Me</SelectItem>
+                    <SelectItem value="pay">I Owe</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -405,31 +618,69 @@ export function DuesPageClient() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEntries.length === 0 ? (
+                  {isDataLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell colSpan={7}>
+                          <Skeleton className="h-8 w-full" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : error ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="text-center text-destructive py-8"
+                      >
+                        {error}
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredEntries.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="text-muted-foreground">
                           <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg font-medium mb-2">No entries found</p>
-                          <p className="text-sm">Add your first due entry to get started</p>
+                          <p className="text-lg font-medium mb-2">
+                            No entries found
+                          </p>
+                          <p className="text-sm">
+                            Add your first due entry to get started
+                          </p>
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredEntries.map((entry) => (
-                      <TableRow key={entry.id} id={`due-${entry.id}`} className="transition-colors">
+                      <TableRow
+                        key={entry._id || entry.id}
+                        id={`due-${entry._id || entry.id}`}
+                        className="transition-colors"
+                      >
                         <TableCell>
-                          <Badge variant={entry.type === "owed_to_me" ? "default" : "secondary"}>
-                            {entry.type === "owed_to_me" ? "Owed to Me" : "I Owe"}
+                          <Badge
+                            variant={
+                              entry.type === "receive" ? "default" : "secondary"
+                            }
+                          >
+                            {entry.type === "receive" ? "Owed to Me" : "I Owe"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{entry.person}</TableCell>
-                        <TableCell className="max-w-xs truncate" title={entry.description}>
-                          {entry.description}
+                        <TableCell className="font-medium">
+                          {entry.name}
+                        </TableCell>
+                        <TableCell
+                          className="max-w-xs truncate"
+                          title={entry.notes}
+                        >
+                          {entry.notes}
                         </TableCell>
                         <TableCell>
                           <span
-                            className={`font-semibold ${entry.type === "owed_to_me" ? "text-green-600" : "text-red-600"}`}
+                            className={`font-semibold ${
+                              entry.type === "receive"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
                           >
                             {entry.amount.toLocaleString()} {entry.currency}
                           </span>
@@ -437,13 +688,18 @@ export function DuesPageClient() {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>{entry.dueDate}</span>
+                            <span>
+                              {new Date(entry.dueDate).toLocaleDateString()}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             {getStatusIcon(entry.status)}
-                            <Badge variant={getStatusColor(entry.status)} className="capitalize">
+                            <Badge
+                              variant={getStatusColor(entry.status)}
+                              className="capitalize"
+                            >
                               {entry.status}
                             </Badge>
                           </div>
@@ -451,24 +707,37 @@ export function DuesPageClient() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(entry)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(entry)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit
                               </DropdownMenuItem>
-                              {entry.status === "pending" && (
-                                <DropdownMenuItem onClick={() => handleMarkAsPaid(entry.id)}>
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Mark as Paid
+                              {entry.status !== "Paid" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleMarkAsPaid(entry._id || entry.id)
+                                  }
+                                >
+                                  <CheckCircle className="mr-2 h-4 w-4" /> Mark
+                                  as Paid
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(entry.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() =>
+                                  handleDelete(entry._id || entry.id)
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -483,5 +752,5 @@ export function DuesPageClient() {
         </Card>
       </div>
     </DashboardLayout>
-  )
+  );
 }

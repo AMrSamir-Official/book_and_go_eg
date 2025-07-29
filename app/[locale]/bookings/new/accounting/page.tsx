@@ -33,7 +33,7 @@ import { useBookingFormStore } from "@/lib/store";
 import { DollarSign, Minus, Plus, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 
 interface InvoiceFormData {
@@ -47,19 +47,21 @@ interface InvoiceFormData {
   arrivalFileDate: string;
 
   // Main Invoice
-  totalInvoiceUSD: number;
-  totalInvoiceEGP: number;
+  totalInvoiceAmount: number;
+  totalInvoiceCurrency: "EGP" | "USD";
+  totalInvoiceExchangeRate?: number;
   paidAmount: number;
-  restAmountUSD: number;
-  restAmountEGP: number;
+  restAmountUSD?: number; // أصبح اختيارياً
+  restAmountEGP?: number; // أصبح اختيارياً
   wayOfPayment: string;
   paymentDate: string;
 
   // Extra Incoming
   extraIncoming: Array<{
-    type: string; // Tipping, Optional tours, Hotel extension, Shopping, Tickets
-    amountUSD: number;
-    amountEGP: number;
+    type: string;
+    amount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     note: string;
     status: "pending" | "paid";
     date: string;
@@ -67,40 +69,48 @@ interface InvoiceFormData {
 
   // Expenses
   accommodation: Array<{
-    name: string; // Hotel 1, Hotel 2, Nile Cruise
-    totalAmountUSD: number;
-    totalAmountEGP: number;
+    name: string;
+    totalAmount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     paymentDate: string;
     status: "pending" | "paid";
   }>;
 
   domesticFlights: Array<{
     details: string;
-    costUSD: number;
-    costEGP: number;
+    cost: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     paymentDate: string;
     status: "pending" | "paid";
   }>;
 
   entranceTickets: {
-    totalUSD: number;
-    totalEGP: number;
+    total: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
   };
 
-  guide: {
-    totalUSD: number;
-    totalEGP: number;
-  };
+  guide: Array<{
+    name: string;
+    cost: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
+    paymentDate: string;
+    status: "pending" | "paid";
+  }>;
 
   transportation: Array<{
-    city: string; // Cairo, Aswan & Luxor
+    city: string;
     supplierName: string;
-    amountUSD: number;
-    amountEGP: number;
+    amount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: "pending" | "paid";
     siteCostNo: string;
     guides: Array<{
-      guideNumber: string; // Guide 1, Guide 2, Guide 3
+      guideNumber: string;
       date: string;
       note: string;
       totalCost: number;
@@ -142,15 +152,29 @@ export default function NewAccounting() {
     formState: { errors },
   } = useForm<InvoiceFormData>({
     defaultValues: {
+      title: "",
       invoiceNumber: `INV-${new Date().getFullYear()}-${String(
         Date.now()
       ).slice(-3)}`,
       bookingId: bookingId || "",
+      bookingDate: "",
+      fileNumber: "",
+      supplierName: "",
+      arrivalFileDate: "",
+      totalInvoiceAmount: 0,
+      totalInvoiceCurrency: "EGP",
+      totalInvoiceExchangeRate: 0,
+      paidAmount: 0,
+      restAmountEGP: 0,
+      restAmountUSD: 0,
+      wayOfPayment: "",
+      paymentDate: "",
       extraIncoming: [
         {
           type: "Tipping",
-          amountUSD: 0,
-          amountEGP: 0,
+          amount: 0,
+          currency: "EGP",
+          exchangeRate: 0,
           note: "",
           status: "pending",
           date: "",
@@ -159,8 +183,9 @@ export default function NewAccounting() {
       accommodation: [
         {
           name: "Hotel 1",
-          totalAmountUSD: 0,
-          totalAmountEGP: 0,
+          totalAmount: 0,
+          currency: "EGP",
+          exchangeRate: 0,
           paymentDate: "",
           status: "pending",
         },
@@ -168,8 +193,24 @@ export default function NewAccounting() {
       domesticFlights: [
         {
           details: "Flight 1 Details",
-          costUSD: 0,
-          costEGP: 0,
+          cost: 0,
+          currency: "EGP",
+          exchangeRate: 0,
+          paymentDate: "",
+          status: "pending",
+        },
+      ],
+      entranceTickets: {
+        total: 0,
+        currency: "EGP",
+        exchangeRate: 0,
+      },
+      guide: [
+        {
+          name: "Guide 1",
+          cost: 0,
+          currency: "EGP",
+          exchangeRate: 0,
           paymentDate: "",
           status: "pending",
         },
@@ -178,8 +219,9 @@ export default function NewAccounting() {
         {
           city: "Cairo",
           supplierName: "",
-          amountUSD: 0,
-          amountEGP: 0,
+          amount: 0,
+          currency: "EGP",
+          exchangeRate: 0,
           status: "pending",
           siteCostNo: "",
           guides: [
@@ -187,6 +229,13 @@ export default function NewAccounting() {
           ],
         },
       ],
+      grandTotalIncomeEGP: 0,
+      grandTotalExpensesEGP: 0,
+      restProfitEGP: 0,
+      dueDate: "",
+      paymentMethod: "",
+      status: "",
+      notes: "",
       dynamicFields: [],
     },
   });
@@ -196,7 +245,11 @@ export default function NewAccounting() {
     append: appendExtraIncoming,
     remove: removeExtraIncoming,
   } = useFieldArray({ control, name: "extraIncoming" });
-
+  const {
+    fields: guideFields,
+    append: appendGuide,
+    remove: removeGuide,
+  } = useFieldArray({ control, name: "guide" });
   const {
     fields: accommodationFields,
     append: appendAccommodation,
@@ -222,6 +275,127 @@ export default function NewAccounting() {
   } = useFieldArray({ control, name: "dynamicFields" });
 
   // Load booking data if bookingId is provided
+  // State variables to display totals for each section in the UI
+  const [totalExtraIncome, setTotalExtraIncome] = useState(0);
+  const [totalAccommodation, setTotalAccommodation] = useState(0);
+  const [totalDomesticFlights, setTotalDomesticFlights] = useState(0);
+  const [totalEntranceTickets, setTotalEntranceTickets] = useState(0);
+  const [totalGuide, setTotalGuide] = useState(0);
+  const [totalTransportation, setTotalTransportation] = useState(0);
+
+  // Watch all form values for changes
+
+  // This useEffect will run calculations whenever any form value changes
+  // This useEffect sets up a subscription to watch for form changes.
+  // It runs only once on component mount.
+  // This useEffect sets up a subscription to watch for form changes.
+  useEffect(() => {
+    const subscription = watch((formValues, { name }) => {
+      // We get the current form values to compare against new calculations
+      const currentValues = control._formValues;
+
+      // Helper function to convert any amount to EGP
+      const convertToEGP = (
+        amount?: number,
+        currency?: "EGP" | "USD",
+        rate?: number
+      ) => {
+        if (currency === "USD" && rate && rate > 0) {
+          return (amount || 0) * rate;
+        }
+        return amount || 0;
+      };
+
+      // 1. Calculate Total Income
+      const mainInvoiceEGP = convertToEGP(
+        formValues.totalInvoiceAmount,
+        formValues.totalInvoiceCurrency,
+        formValues.totalInvoiceExchangeRate
+      );
+
+      const extraIncomingTotal = (formValues.extraIncoming || []).reduce(
+        (sum, item) => {
+          if (!item) return sum; // TypeScript fix
+          return (
+            sum + convertToEGP(item.amount, item.currency, item.exchangeRate)
+          );
+        },
+        0
+      );
+
+      const grandTotalIncome = mainInvoiceEGP + extraIncomingTotal;
+      // Only update if the value has actually changed
+      if (currentValues.grandTotalIncomeEGP !== grandTotalIncome) {
+        setValue("grandTotalIncomeEGP", grandTotalIncome);
+      }
+      setTotalExtraIncome(extraIncomingTotal);
+
+      // 2. Calculate Total Expenses
+      const accommodationTotal = (formValues.accommodation || []).reduce(
+        (sum, item) => {
+          if (!item) return sum; // TypeScript fix
+          return (
+            sum +
+            convertToEGP(item.totalAmount, item.currency, item.exchangeRate)
+          );
+        },
+        0
+      );
+      const domesticFlightsTotal = (formValues.domesticFlights || []).reduce(
+        (sum, item) => {
+          if (!item) return sum; // TypeScript fix
+          return (
+            sum + convertToEGP(item.cost, item.currency, item.exchangeRate)
+          );
+        },
+        0
+      );
+      const entranceTicketsTotal = convertToEGP(
+        formValues.entranceTickets?.total,
+        formValues.entranceTickets?.currency,
+        formValues.entranceTickets?.exchangeRate
+      );
+      const guideTotal = (formValues.guide || []).reduce((sum, item) => {
+        if (!item) return sum; // TypeScript fix
+        return sum + convertToEGP(item.cost, item.currency, item.exchangeRate);
+      }, 0);
+      const transportationTotal = (formValues.transportation || []).reduce(
+        (sum, item) => {
+          if (!item) return sum; // TypeScript fix
+          return (
+            sum + convertToEGP(item.amount, item.currency, item.exchangeRate)
+          );
+        },
+        0
+      );
+
+      const grandTotalExpenses =
+        accommodationTotal +
+        domesticFlightsTotal +
+        entranceTicketsTotal +
+        guideTotal +
+        transportationTotal;
+
+      if (currentValues.grandTotalExpensesEGP !== grandTotalExpenses) {
+        setValue("grandTotalExpensesEGP", grandTotalExpenses);
+      }
+
+      // Update states for UI display
+      setTotalAccommodation(accommodationTotal);
+      setTotalDomesticFlights(domesticFlightsTotal);
+      setTotalEntranceTickets(entranceTicketsTotal);
+      setTotalGuide(guideTotal);
+      setTotalTransportation(transportationTotal);
+
+      // 3. Calculate Rest Profit
+      const restProfit = grandTotalIncome - grandTotalExpenses;
+      if (currentValues.restProfitEGP !== restProfit) {
+        setValue("restProfitEGP", restProfit);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, setValue, control]); // Add control to the dependency array
   useEffect(() => {
     if (bookingId) {
       const booking = sampleBookings.find((b) => b.id === bookingId);
@@ -236,12 +410,33 @@ export default function NewAccounting() {
   }, [bookingId, setValue]);
 
   const onSubmit = (data: InvoiceFormData) => {
-    console.log("Invoice Data:", data);
+    // Object to hold all items that are pending payment
+    const pendingItems = {
+      extraIncoming: data.extraIncoming
+        .filter((item) => item.status === "pending" && item.amount > 0)
+        .map((item) => item.type),
+      accommodation: data.accommodation
+        .filter((item) => item.status === "pending" && item.totalAmount > 0)
+        .map((item) => item.name),
+      domesticFlights: data.domesticFlights
+        .filter((item) => item.status === "pending" && item.cost > 0)
+        .map((item) => item.details),
+      transportation: data.transportation
+        .filter((item) => item.status === "pending" && item.amount > 0)
+        .map((item) => `${item.supplierName} in ${item.city}`),
+    };
+
+    console.log("--- FINAL CALCULATED INVOICE DATA ---");
+    console.log(data);
+
+    console.log("--- PENDING ITEMS TO BE PAID ---");
+    console.log(pendingItems);
+
     toast({
-      title: "Invoice Created",
-      description: "Your invoice has been created successfully!",
+      title: "Invoice Ready",
+      description: "Data logged to console. Check before final submission.",
     });
-    router.push("/invoices");
+    // I've commented this out so you can check the console without being redirected // router.push("/invoices");
   };
 
   const extraIncomingTypes = [
@@ -374,25 +569,48 @@ export default function NewAccounting() {
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold">Main Invoice</h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div>
-                    <Label>Total Invoice (USD)</Label>
+                    <Label>Total Invoice Amount</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      {...register("totalInvoiceUSD")}
+                      {...register("totalInvoiceAmount")}
                       placeholder="0.00"
                     />
                   </div>
+
                   <div>
-                    <Label>Total Invoice (EGP)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...register("totalInvoiceEGP")}
-                      placeholder="0.00"
-                    />
+                    <Label>Currency</Label>
+                    <RadioGroup
+                      defaultValue={watch("totalInvoiceCurrency") || "EGP"}
+                      className="flex items-center space-x-4 pt-2"
+                      onValueChange={(value) =>
+                        setValue("totalInvoiceCurrency", value as "EGP" | "USD")
+                      }
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="EGP" id="main-inv-egp" />
+                        <Label htmlFor="main-inv-egp">EGP</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="USD" id="main-inv-usd" />
+                        <Label htmlFor="main-inv-usd">USD</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
+
+                  {watch("totalInvoiceCurrency") === "USD" && (
+                    <div>
+                      <Label>Exchange Rate ($ to E£)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...register("totalInvoiceExchangeRate")}
+                        placeholder="e.g., 47.50"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -460,8 +678,9 @@ export default function NewAccounting() {
                     onClick={() =>
                       appendExtraIncoming({
                         type: "Tipping",
-                        amountUSD: 0,
-                        amountEGP: 0,
+                        amount: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
                         note: "",
                         status: "pending",
                         date: "",
@@ -473,115 +692,165 @@ export default function NewAccounting() {
                   </Button>
                 </div>
 
-                {extraIncomingFields.map((field, index) => (
-                  <div key={field.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h5 className="font-medium">Extra Income {index + 1}</h5>
-                      {extraIncomingFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeExtraIncoming(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                {extraIncomingFields.map((field, index) => {
+                  const watchedCurrency = watch(
+                    `extraIncoming.${index}.currency`
+                  );
+                  return (
+                    <div key={field.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h5 className="font-medium">
+                          Extra Income {index + 1}
+                        </h5>
+                        {extraIncomingFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeExtraIncoming(index)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      <div>
-                        <Label>Type</Label>
-                        <Select
-                          onValueChange={(value) =>
-                            setValue(`extraIncoming.${index}.type`, value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {extraIncomingTypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Amount (USD)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`extraIncoming.${index}.amountUSD`)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label>Amount (EGP)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`extraIncoming.${index}.amountEGP`)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label>Date</Label>
-                        <Input
-                          type="date"
-                          {...register(`extraIncoming.${index}.date`)}
-                        />
-                      </div>
-                      <div>
-                        <Label>Status</Label>
-                        <RadioGroup
-                          defaultValue="pending"
-                          onValueChange={(value) =>
-                            setValue(
-                              `extraIncoming.${index}.status`,
-                              value as "pending" | "paid"
-                            )
-                          }
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value="pending"
-                              id={`extra-pending-${index}`}
-                            />
-                            <Label htmlFor={`extra-pending-${index}`}>
-                              Pending
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value="paid"
-                              id={`extra-paid-${index}`}
-                            />
-                            <Label htmlFor={`extra-paid-${index}`}>Paid</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    </div>
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+                        <div>
+                          <Label>Type</Label>
+                          <Select
+                            onValueChange={(value) =>
+                              setValue(`extraIncoming.${index}.type`, value)
+                            }
+                            defaultValue={field.type}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {extraIncomingTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="mt-4">
-                      <Label>Note</Label>
-                      <Textarea
-                        {...register(`extraIncoming.${index}.note`)}
-                        placeholder="Additional notes..."
-                        rows={2}
-                      />
+                        <div>
+                          <Label>Amount</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(`extraIncoming.${index}.amount`)}
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Currency</Label>
+                          <RadioGroup
+                            defaultValue={field.currency || "EGP"}
+                            className="flex items-center space-x-4 pt-2"
+                            onValueChange={(value) =>
+                              setValue(
+                                `extraIncoming.${index}.currency`,
+                                value as "EGP" | "USD"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="EGP"
+                                id={`extra-egp-${index}`}
+                              />
+                              <Label htmlFor={`extra-egp-${index}`}>EGP</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="USD"
+                                id={`extra-usd-${index}`}
+                              />
+                              <Label htmlFor={`extra-usd-${index}`}>USD</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
+                        {watchedCurrency === "USD" && (
+                          <div>
+                            <Label>Exchange Rate ($ to E£)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...register(
+                                `extraIncoming.${index}.exchangeRate`
+                              )}
+                              placeholder="e.g., 47.50"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <Label>Date</Label>
+                          <Input
+                            type="date"
+                            {...register(`extraIncoming.${index}.date`)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <Label>Status</Label>
+                          <RadioGroup
+                            defaultValue={field.status || "pending"}
+                            onValueChange={(value) =>
+                              setValue(
+                                `extraIncoming.${index}.status`,
+                                value as "pending" | "paid"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="pending"
+                                id={`extra-pending-${index}`}
+                              />
+                              <Label htmlFor={`extra-pending-${index}`}>
+                                Pending
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="paid"
+                                id={`extra-paid-${index}`}
+                              />
+                              <Label htmlFor={`extra-paid-${index}`}>
+                                Paid
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        <div>
+                          <Label>Note</Label>
+                          <Textarea
+                            {...register(`extraIncoming.${index}.note`)}
+                            placeholder="Additional notes..."
+                            rows={1}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Extra Income:</span>
-                    <div className="text-right">
-                      <div>1500 USD</div>
-                      <div>EGP</div>
+                    <div className="text-right font-semibold text-lg">
+                      {totalExtraIncome.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "EGP",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -596,9 +865,10 @@ export default function NewAccounting() {
             </CardHeader>
             <CardContent className="space-y-8">
               {/* 1- Accommodation */}
+              {/* 1- Accommodation */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">1-Accommodation</h4>
+                  <h4 className="text-lg font-semibold">1- Accommodation</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -606,8 +876,9 @@ export default function NewAccounting() {
                     onClick={() =>
                       appendAccommodation({
                         name: `Hotel ${accommodationFields.length + 1}`,
-                        totalAmountUSD: 0,
-                        totalAmountEGP: 0,
+                        totalAmount: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
                         paymentDate: "",
                         status: "pending",
                       })
@@ -618,99 +889,146 @@ export default function NewAccounting() {
                   </Button>
                 </div>
 
-                {accommodationFields.map((field, index) => (
-                  <div key={field.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h5 className="font-medium">
-                        {field.name || `Hotel ${index + 1}`}
-                      </h5>
-                      {accommodationFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeAccommodation(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                {accommodationFields.map((field, index) => {
+                  const watchedCurrency = watch(
+                    `accommodation.${index}.currency`
+                  );
+                  return (
+                    <div key={field.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h5 className="font-medium">
+                          Accommodation Item {index + 1}
+                        </h5>
+                        {accommodationFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeAccommodation(index)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div>
-                        <Label>Name</Label>
-                        <Input
-                          {...register(`accommodation.${index}.name`)}
-                          placeholder="Hotel name"
-                        />
-                      </div>
-                      <div>
-                        <Label>Total Amount (USD)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`accommodation.${index}.totalAmountUSD`)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label>Total Amount (EGP)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`accommodation.${index}.totalAmountEGP`)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label>Payment Date</Label>
-                        <Input
-                          type="date"
-                          {...register(`accommodation.${index}.paymentDate`)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <Label>Status</Label>
-                      <RadioGroup
-                        defaultValue="pending"
-                        onValueChange={(value) =>
-                          setValue(
-                            `accommodation.${index}.status`,
-                            value as "pending" | "paid"
-                          )
-                        }
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value="pending"
-                              id={`acc-pending-${index}`}
-                            />
-                            <Label htmlFor={`acc-pending-${index}`}>
-                              Pending
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value="paid"
-                              id={`acc-paid-${index}`}
-                            />
-                            <Label htmlFor={`acc-paid-${index}`}>Paid</Label>
-                          </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                        <div>
+                          <Label>Name</Label>
+                          <Input
+                            {...register(`accommodation.${index}.name`)}
+                            placeholder="Hotel name"
+                          />
                         </div>
-                      </RadioGroup>
+
+                        <div>
+                          <Label>Total Amount</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(`accommodation.${index}.totalAmount`)}
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Currency</Label>
+                          <RadioGroup
+                            defaultValue={field.currency || "EGP"}
+                            className="flex items-center space-x-4 pt-2"
+                            onValueChange={(value) =>
+                              setValue(
+                                `accommodation.${index}.currency`,
+                                value as "EGP" | "USD"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="EGP"
+                                id={`acc-egp-${index}`}
+                              />
+                              <Label htmlFor={`acc-egp-${index}`}>EGP</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="USD"
+                                id={`acc-usd-${index}`}
+                              />
+                              <Label htmlFor={`acc-usd-${index}`}>USD</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
+                        {watchedCurrency === "USD" && (
+                          <div>
+                            <Label>Exchange Rate ($ to E£)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...register(
+                                `accommodation.${index}.exchangeRate`
+                              )}
+                              placeholder="e.g., 47.50"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <Label>Payment Date</Label>
+                          <Input
+                            type="date"
+                            {...register(`accommodation.${index}.paymentDate`)}
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Status</Label>
+                          <RadioGroup
+                            defaultValue={field.status || "pending"}
+                            onValueChange={(value) =>
+                              setValue(
+                                `accommodation.${index}.status`,
+                                value as "pending" | "paid"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`acc-pending-${index}`}
+                                />
+                                <Label htmlFor={`acc-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`acc-paid-${index}`}
+                                />
+                                <Label htmlFor={`acc-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Accommodation:</span>
-                    <div className="text-right">
-                      <div>800 USD</div>
-                      <div>EGP</div>
+                    <div className="text-right font-semibold text-lg">
+                      {totalAccommodation.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "EGP",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -729,8 +1047,9 @@ export default function NewAccounting() {
                     onClick={() =>
                       appendFlight({
                         details: `Flight ${flightFields.length + 1} Details`,
-                        costUSD: 0,
-                        costEGP: 0,
+                        cost: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
                         paymentDate: "",
                         status: "pending",
                       })
@@ -741,99 +1060,147 @@ export default function NewAccounting() {
                   </Button>
                 </div>
 
-                {flightFields.map((field, index) => (
-                  <div key={field.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h5 className="font-medium">Flight {index + 1}</h5>
-                      {flightFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeFlight(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                {flightFields.map((field, index) => {
+                  const watchedCurrency = watch(
+                    `domesticFlights.${index}.currency`
+                  );
+                  return (
+                    <div key={field.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h5 className="font-medium">Flight {index + 1}</h5>
+                        {flightFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeFlight(index)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div>
-                        <Label>Flight Details</Label>
-                        <Input
-                          {...register(`domesticFlights.${index}.details`)}
-                          placeholder="Flight details"
-                        />
-                      </div>
-                      <div>
-                        <Label>Cost (USD)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`domesticFlights.${index}.costUSD`)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label>Cost (EGP)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`domesticFlights.${index}.costEGP`)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <Label>Payment Date</Label>
-                        <Input
-                          type="date"
-                          {...register(`domesticFlights.${index}.paymentDate`)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <Label>Status</Label>
-                      <RadioGroup
-                        defaultValue="pending"
-                        onValueChange={(value) =>
-                          setValue(
-                            `domesticFlights.${index}.status`,
-                            value as "pending" | "paid"
-                          )
-                        }
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value="pending"
-                              id={`flight-pending-${index}`}
-                            />
-                            <Label htmlFor={`flight-pending-${index}`}>
-                              Pending
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value="paid"
-                              id={`flight-paid-${index}`}
-                            />
-                            <Label htmlFor={`flight-paid-${index}`}>Paid</Label>
-                          </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                        <div>
+                          <Label>Flight Details</Label>
+                          <Input
+                            {...register(`domesticFlights.${index}.details`)}
+                            placeholder="Flight details"
+                          />
                         </div>
-                      </RadioGroup>
+
+                        <div>
+                          <Label>Cost</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(`domesticFlights.${index}.cost`)}
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Currency</Label>
+                          <RadioGroup
+                            defaultValue={field.currency || "EGP"}
+                            className="flex items-center space-x-4 pt-2"
+                            onValueChange={(value) =>
+                              setValue(
+                                `domesticFlights.${index}.currency`,
+                                value as "EGP" | "USD"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="EGP"
+                                id={`flight-egp-${index}`}
+                              />
+                              <Label htmlFor={`flight-egp-${index}`}>EGP</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="USD"
+                                id={`flight-usd-${index}`}
+                              />
+                              <Label htmlFor={`flight-usd-${index}`}>USD</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
+                        {watchedCurrency === "USD" && (
+                          <div>
+                            <Label>Exchange Rate ($ to E£)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...register(
+                                `domesticFlights.${index}.exchangeRate`
+                              )}
+                              placeholder="e.g., 47.50"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <Label>Payment Date</Label>
+                          <Input
+                            type="date"
+                            {...register(
+                              `domesticFlights.${index}.paymentDate`
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <Label>Status</Label>
+                          <RadioGroup
+                            defaultValue={field.status || "pending"}
+                            onValueChange={(value) =>
+                              setValue(
+                                `domesticFlights.${index}.status`,
+                                value as "pending" | "paid"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`flight-pending-${index}`}
+                                />
+                                <Label htmlFor={`flight-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`flight-paid-${index}`}
+                                />
+                                <Label htmlFor={`flight-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">
                       Total Domestic Flights:
                     </span>
-                    <div className="text-right">
-                      <div>800 USD</div>
-                      <div>EGP</div>
+                    <div className="text-right font-semibold text-lg">
+                      {totalDomesticFlights.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "EGP",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -879,34 +1246,60 @@ export default function NewAccounting() {
                   </TableBody>
                 </Table>
                 {/* //added */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div>
-                    <Label>Total (USD)</Label>
+                    <Label>Total</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      {...register("entranceTickets.totalUSD")}
+                      {...register("entranceTickets.total")}
                       placeholder="0.00"
                     />
                   </div>
                   <div>
-                    <Label>Total (EGP)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...register("entranceTickets.totalEGP")}
-                      placeholder="0.00"
-                    />
+                    <Label>Currency</Label>
+                    <RadioGroup
+                      defaultValue={watch("entranceTickets.currency") || "EGP"}
+                      className="flex items-center space-x-4 pt-2"
+                      onValueChange={(value) =>
+                        setValue(
+                          "entranceTickets.currency",
+                          value as "EGP" | "USD"
+                        )
+                      }
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="EGP" id="tickets-egp" />
+                        <Label htmlFor="tickets-egp">EGP</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="USD" id="tickets-usd" />
+                        <Label htmlFor="tickets-usd">USD</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
+                  {watch("entranceTickets.currency") === "USD" && (
+                    <div>
+                      <Label>Exchange Rate ($ to E£)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...register("entranceTickets.exchangeRate")}
+                        placeholder="e.g., 47.50"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">
                       Total Entrance Tickets:
                     </span>
-                    <div className="text-right">
-                      <div>800 USD</div>
-                      <div>EGP</div>
+                    <div className="text-right font-semibold text-lg">
+                      {totalEntranceTickets.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "EGP",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -915,36 +1308,163 @@ export default function NewAccounting() {
               <Separator />
 
               {/* Guide */}
+              {/* Guide */}
               <div className="space-y-4">
-                <h4 className="text-lg font-semibold">Guide</h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Total (USD)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...register("guide.totalUSD")}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <Label>Total (EGP)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...register("guide.totalEGP")}
-                      placeholder="0.00"
-                    />
-                  </div>
+                <div className="flex items-center justify-between flex-wrap">
+                  <h4 className="text-lg font-semibold">Guide</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      appendGuide({
+                        name: `Guide ${guideFields.length + 1}`,
+                        cost: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
+                        paymentDate: "",
+                        status: "pending",
+                      })
+                    }
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Guide
+                  </Button>
                 </div>
+
+                {guideFields.map((field, index) => {
+                  const watchedCurrency = watch(`guide.${index}.currency`);
+                  return (
+                    <div key={field.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h5 className="font-medium">Guide Entry {index + 1}</h5>
+                        {guideFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeGuide(index)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                        <div>
+                          <Label>Name</Label>
+                          <Input
+                            {...register(`guide.${index}.name`)}
+                            placeholder="Guide name"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Cost</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(`guide.${index}.cost`)}
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Currency</Label>
+                          <RadioGroup
+                            defaultValue={field.currency || "EGP"}
+                            className="flex items-center space-x-4 pt-2"
+                            onValueChange={(value) =>
+                              setValue(
+                                `guide.${index}.currency`,
+                                value as "EGP" | "USD"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="EGP"
+                                id={`guide-egp-${index}`}
+                              />
+                              <Label htmlFor={`guide-egp-${index}`}>EGP</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="USD"
+                                id={`guide-usd-${index}`}
+                              />
+                              <Label htmlFor={`guide-usd-${index}`}>USD</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
+                        {watchedCurrency === "USD" && (
+                          <div>
+                            <Label>Exchange Rate ($ to E£)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...register(`guide.${index}.exchangeRate`)}
+                              placeholder="e.g., 47.50"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <Label>Payment Date</Label>
+                          <Input
+                            type="date"
+                            {...register(`guide.${index}.paymentDate`)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Status</Label>
+                          <RadioGroup
+                            defaultValue={field.status || "pending"}
+                            onValueChange={(value) =>
+                              setValue(
+                                `guide.${index}.status`,
+                                value as "pending" | "paid"
+                              )
+                            }
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`guide-pending-${index}`}
+                                />
+                                <Label htmlFor={`guide-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`guide-paid-${index}`}
+                                />
+                                <Label htmlFor={`guide-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
 
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Guide:</span>
-                    <div className="text-right">
-                      <div>800 USD</div>
-                      <div>EGP</div>
+                    <div className="text-right font-semibold text-lg">
+                      {totalGuide.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "EGP",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -964,8 +1484,9 @@ export default function NewAccounting() {
                       appendTransportation({
                         city: "Cairo",
                         supplierName: "",
-                        amountUSD: 0,
-                        amountEGP: 0,
+                        amount: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
                         status: "pending",
                         siteCostNo: "",
                         guides: [
@@ -1036,25 +1557,59 @@ export default function NewAccounting() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-start">
                       <div>
-                        <Label>Amount (USD)</Label>
+                        <Label>Amount</Label>
                         <Input
                           type="number"
                           step="0.01"
-                          {...register(`transportation.${index}.amountUSD`)}
+                          {...register(`transportation.${index}.amount`)}
                           placeholder="0.00"
                         />
                       </div>
+
                       <div>
-                        <Label>Amount (EGP)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register(`transportation.${index}.amountEGP`)}
-                          placeholder="0.00"
-                        />
+                        <Label>Currency</Label>
+                        <RadioGroup
+                          defaultValue={field.currency || "EGP"}
+                          className="flex items-center space-x-4 pt-2"
+                          onValueChange={(value) =>
+                            setValue(
+                              `transportation.${index}.currency`,
+                              value as "EGP" | "USD"
+                            )
+                          }
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem
+                              value="EGP"
+                              id={`trans-egp-${index}`}
+                            />
+                            <Label htmlFor={`trans-egp-${index}`}>EGP</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem
+                              value="USD"
+                              id={`trans-usd-${index}`}
+                            />
+                            <Label htmlFor={`trans-usd-${index}`}>USD</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
+
+                      {watch(`transportation.${index}.currency`) === "USD" && (
+                        <div>
+                          <Label>Exchange Rate ($ to E£)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(
+                              `transportation.${index}.exchangeRate`
+                            )}
+                            placeholder="e.g., 47.50"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="mb-4">
@@ -1162,9 +1717,11 @@ export default function NewAccounting() {
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Transportation:</span>
-                    <div className="text-right">
-                      <div>800 USD</div>
-                      <div>EGP</div>
+                    <div className="text-right font-semibold text-lg">
+                      {totalTransportation.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "EGP",
+                      })}
                     </div>
                   </div>
                 </div>

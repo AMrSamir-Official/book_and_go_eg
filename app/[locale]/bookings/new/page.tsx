@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+
 import {
   Table,
   TableBody,
@@ -37,15 +38,63 @@ import {
   Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
-
+import {
+  Control,
+  useFieldArray,
+  UseFieldArrayRemove,
+  useForm,
+  UseFormRegister,
+  UseFormSetValue,
+} from "react-hook-form";
+// --- Updated Data Lists ---
+const vendors = ["Rmit", "Tanvi", "Dixita", "Viator", "SanUSA", "Gurave"];
+const nationalities = ["USA", "INDIAN", "British", "Spanish", "Italy"];
+const internationalAirlines = [
+  "Egyptair",
+  "Qatarways",
+  "Emirates",
+  "Etihad",
+  "Oman air ways",
+  "Turkish",
+  "Airfrance",
+  "Swissair",
+  "Lufthansa",
+  "British airline",
+];
+const domesticAirlines = ["Egyptair", "Aircairo", "Nile air", "Nesma airline"];
+const flightCities = ["Cairo", "Aswan", "Luxor", "Hurghada", "Sharm"];
+const vanTypes = ["Lemosine 2 Pax", "H1 4 pAX", "Hice 7 Pax", "Coster 11 Pax"];
+const hotelsByCity = {
+  Cairo: [
+    "Ramses Hilton Cairo",
+    "Hilton Nile Tower Cairo",
+    "Radisson blu Cairo",
+    "Le passage airport Hotel Cairo",
+    "Pyramids Park Hotel Cairo",
+  ],
+  Hurghada: ["Azur Pharaoh resort", "serinty beach", "Serenity fun city"],
+  Aswan: ["Pyramisa island", "City Max"],
+  Alexandria: ["Hilton Alexandria"],
+  Sharm: ["Rotana sharm"],
+};
+const citiesWithHotels = Object.keys(hotelsByCity);
+interface GuideItemProps {
+  guideItem: { id: string };
+  guideIndex: number;
+  control: Control<BookingFormData>;
+  register: UseFormRegister<BookingFormData>;
+  setValue: UseFormSetValue<BookingFormData>;
+  removeGuide: UseFieldArrayRemove;
+  guideFields: { id: string }[];
+  cities: string[];
+  nationalities: string[];
+}
 export interface BookingFormData {
   // Basic Information
   fileNumber: string;
-  supplier: string;
+  vendor: string;
   paxCount: number;
   arrivalDate: string;
   departureDate: string;
@@ -76,6 +125,7 @@ export interface BookingFormData {
 
   // Accommodation
   hotels: Array<{
+    city: string; // <-- تم إضافة هذا السطر
     name: string;
     checkIn: string;
     checkOut: string;
@@ -103,6 +153,11 @@ export interface BookingFormData {
   cairoTransfer: {
     paxCount: number;
     vanType: string;
+    driver: {
+      name: string;
+      contact: string;
+      description: string;
+    };
     days: Array<{
       day: number;
       date: string;
@@ -129,6 +184,10 @@ export interface BookingFormData {
   meetingAssist: {
     paxCount: number;
     name: string;
+    driver: {
+      name: string;
+      contact: string;
+    };
     arrivalFlight: {
       date: string;
       time: string;
@@ -156,13 +215,6 @@ export interface BookingFormData {
   }>;
 }
 
-export const vanTypes = [
-  { id: "limousine", name: "Limousine", capacity: 3 },
-  { id: "h1", name: "H1", capacity: 7 },
-  { id: "hiace", name: "Hiace", capacity: 12 },
-  { id: "coaster", name: "Coaster", capacity: 25 },
-];
-
 const cities = [
   "Cairo",
   "Giza",
@@ -179,22 +231,232 @@ const cities = [
   "Esna",
 ];
 
-const nationalities = [
-  "American",
-  "British",
-  "German",
-  "French",
-  "Italian",
-  "Spanish",
-  "Canadian",
-  "Australian",
-  "Japanese",
-  "Chinese",
-  "Russian",
-  "Brazilian",
-  "Other",
-];
+// يمكنك وضع هذا المكون في نفس ملف NewBookingPage.tsx ولكن قبل الدالة الرئيسية
+// أو في ملف منفصل واستيراده
 
+function GuideItem({
+  guideItem,
+  guideIndex,
+  control,
+  register,
+  setValue,
+  removeGuide,
+  guideFields,
+  cities,
+  nationalities,
+}: GuideItemProps) {
+  const {
+    fields: guideDayFields,
+    append: appendGuideDay,
+    remove: removeGuideDay,
+  } = useFieldArray({
+    control,
+    name: `guides.${guideIndex}.days`,
+  });
+
+  return (
+    <div key={guideItem.id} className="border rounded-lg p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h4 className="text-lg font-semibold">Guide {guideIndex + 1}</h4>
+        {guideFields.length > 1 && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => removeGuide(guideIndex)}
+          >
+            <Minus className="h-4 w-4 mr-2" />
+            Remove Guide
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <Label className="text-base font-medium">City:</Label>
+          <Select
+            onValueChange={(value) =>
+              setValue(`guides.${guideIndex}.city`, value)
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select city" />
+            </SelectTrigger>
+            <SelectContent>
+              {cities.map((city) => (
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-base font-medium">Guide Name:</Label>
+          <Input
+            {...register(`guides.${guideIndex}.guideName`)}
+            placeholder="Guide name"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      {/* ... باقي حقول المرشد (Nationality, Pickup, Pax) ... */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <Label className="text-base font-medium">Guest Nationality:</Label>
+          <Select
+            onValueChange={(value) =>
+              setValue(`guides.${guideIndex}.guestNationality`, value)
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select nationality" />
+            </SelectTrigger>
+            <SelectContent>
+              {nationalities.map((nationality) => (
+                <SelectItem key={nationality} value={nationality}>
+                  {nationality}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label className="text-base font-medium">
+            Pickup Hotel Location:
+          </Label>
+          <Input
+            {...register(`guides.${guideIndex}.pickupHotelLocation`)}
+            placeholder="Hotel location"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <Label className="text-base font-medium">No. of Pax - Adults:</Label>
+          <Input
+            type="number"
+            {...register(`guides.${guideIndex}.paxAdults`)}
+            placeholder="Number of adults"
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <Label className="text-base font-medium">
+            No. of Pax - Children:
+          </Label>
+          <Input
+            type="number"
+            {...register(`guides.${guideIndex}.paxChildren`)}
+            placeholder="Number of children"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      {/* --- الجدول الديناميكي --- */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-medium">Daily Schedule</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              appendGuideDay({
+                day: guideDayFields.length + 1,
+                date: "",
+                time: "",
+                include: "",
+                exclude: "",
+              })
+            }
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Day
+          </Button>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Day</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Include</TableHead>
+                <TableHead>Exclude</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {guideDayFields.map((dayItem, dayIndex) => (
+                <TableRow key={dayItem.id}>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      {...register(`guides.${guideIndex}.days.${dayIndex}.day`)}
+                      defaultValue={dayIndex + 1}
+                      className="w-20"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="date"
+                      {...register(
+                        `guides.${guideIndex}.days.${dayIndex}.date`
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="time"
+                      {...register(
+                        `guides.${guideIndex}.days.${dayIndex}.time`
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Textarea
+                      {...register(
+                        `guides.${guideIndex}.days.${dayIndex}.include`
+                      )}
+                      placeholder="What's included..."
+                      rows={2}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Textarea
+                      {...register(
+                        `guides.${guideIndex}.days.${dayIndex}.exclude`
+                      )}
+                      placeholder="What's excluded..."
+                      rows={2}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeGuideDay(dayIndex)}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function NewBookingPage() {
   const t = useTranslations("bookings");
   const tCommon = useTranslations("common");
@@ -215,7 +477,7 @@ export default function NewBookingPage() {
       fileNumber: `BG-${new Date().getFullYear()}-${String(Date.now()).slice(
         -3
       )}`,
-      supplier: "Book & Go Travel",
+      vendor: "",
       paxCount: 2,
       numberOfNights: 7,
       nationality: "",
@@ -233,7 +495,9 @@ export default function NewBookingPage() {
           flightNo: "",
         },
       ],
-      hotels: [{ name: "", checkIn: "", checkOut: "", status: "pending" }],
+      hotels: [
+        { city: "", name: "", checkIn: "", checkOut: "", status: "pending" },
+      ],
       nileCruise: { name: "", checkIn: "", checkOut: "", status: "pending" },
       include: "",
       exclude: "",
@@ -242,6 +506,9 @@ export default function NewBookingPage() {
       cairoTransfer: {
         paxCount: 2,
         vanType: "",
+        driver: { name: "", contact: "", description: "" },
+        // highlight-end
+
         days: [{ day: 1, date: "", city: "", description: "" }],
         sendBy: [],
       },
@@ -254,6 +521,7 @@ export default function NewBookingPage() {
       meetingAssist: {
         paxCount: 2,
         name: "",
+        driver: { name: "", contact: "" },
         arrivalFlight: { date: "", time: "", airlineName: "", flightNo: "" },
         nationality: "",
       },
@@ -308,16 +576,16 @@ export default function NewBookingPage() {
   } = useFieldArray({ control, name: "guides" });
   const { setBookingData } = useBookingFormStore();
   const onSubmit = (data: BookingFormData) => {
-    console.log("Booking Data saved ");
+    console.log("Booking Data saved :", data);
     setBookingData(data);
     toast({
-      title: "you now will add Accounting data",
-      description: "Please Complet the next Step ...",
+      title: "Booking has been created",
+      // description: "Please Complet the next Step ...",
     });
 
     // Redirect to accounting page for this booking
     setTimeout(() => {
-      router.push(`/bookings/new/accounting`);
+      router.push(`/bookings/1`);
     }, 1500);
   };
 
@@ -338,33 +606,6 @@ export default function NewBookingPage() {
               <p className="text-muted-foreground">Book & Go Travel</p>
             </div>
           </div>
-          {/* <div className="flex space-x-2 no-print flex-wrap">
-            <Button
-              variant="outline"
-              onClick={handlePrintBooking}
-              disabled={isGeneratingPDF}
-            >
-              {isGeneratingPDF ? (
-                <>
-                  <Download className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Make PDF
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleWhatsAppShare}
-              disabled={isGeneratingPDF}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Send WhatsApp
-            </Button>
-          </div> */}
         </div>
 
         {/* Printable Content */}
@@ -413,16 +654,21 @@ export default function NewBookingPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="supplier" className="text-base font-medium">
-                      Supplier:
-                    </Label>
-                    <Input
-                      id="supplier"
-                      {...register("supplier", {
-                        required: "Supplier is required",
-                      })}
-                      className="mt-1"
-                    />
+                    <Label htmlFor="vendor">Vendor:</Label>
+                    <Select
+                      onValueChange={(value) => setValue("vendor", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor} value={vendor}>
+                            {vendor}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -430,9 +676,16 @@ export default function NewBookingPage() {
                       No. of Pax:
                     </Label>
                     <Select
-                      onValueChange={(value) =>
-                        setValue("paxCount", Number.parseInt(value))
-                      }
+                      //لعرض القيمة المحدثة دائماً
+                      value={watch("paxCount")?.toString()}
+                      onValueChange={(value) => {
+                        const numValue = Number.parseInt(value);
+                        // تحديث جميع الحقول مرة واحدة
+                        setValue("paxCount", numValue);
+                        setValue("cairoTransfer.paxCount", numValue);
+                        setValue("aswanLuxorTransfer.paxCount", numValue);
+                        setValue("meetingAssist.paxCount", numValue);
+                      }}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select pax count" />
@@ -560,10 +813,22 @@ export default function NewBookingPage() {
                       </div>
                       <div>
                         <Label className="text-sm">Airline Name</Label>
-                        <Input
-                          {...register("arrivalFlight.airlineName")}
-                          placeholder="EgyptAir"
-                        />
+                        <Select
+                          onValueChange={(value) =>
+                            setValue("arrivalFlight.airlineName", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Airline" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {internationalAirlines.map((name) => (
+                              <SelectItem key={name} value={name}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Label className="text-sm">Flight No</Label>
@@ -596,10 +861,22 @@ export default function NewBookingPage() {
                       </div>
                       <div>
                         <Label className="text-sm">Airline Name</Label>
-                        <Input
-                          {...register("departureFlight.airlineName")}
-                          placeholder="EgyptAir"
-                        />
+                        <Select
+                          onValueChange={(value) =>
+                            setValue("arrivalFlight.airlineName", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Airline" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {internationalAirlines.map((name) => (
+                              <SelectItem key={name} value={name}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Label className="text-sm">Flight No</Label>
@@ -655,8 +932,9 @@ export default function NewBookingPage() {
                           </Button>
                         )}
                       </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                        <div>
+                        <div className="space-y-1">
                           <Label className="text-sm">Departure</Label>
                           <Select
                             onValueChange={(value) =>
@@ -670,7 +948,7 @@ export default function NewBookingPage() {
                               <SelectValue placeholder="Select city" />
                             </SelectTrigger>
                             <SelectContent>
-                              {cities.map((city) => (
+                              {flightCities.map((city) => (
                                 <SelectItem key={city} value={city}>
                                   {city}
                                 </SelectItem>
@@ -678,7 +956,7 @@ export default function NewBookingPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <Label className="text-sm">Arrival</Label>
                           <Select
                             onValueChange={(value) =>
@@ -692,7 +970,7 @@ export default function NewBookingPage() {
                               <SelectValue placeholder="Select city" />
                             </SelectTrigger>
                             <SelectContent>
-                              {cities.map((city) => (
+                              {flightCities.map((city) => (
                                 <SelectItem key={city} value={city}>
                                   {city}
                                 </SelectItem>
@@ -700,33 +978,60 @@ export default function NewBookingPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
+                        <div className="space-y-1">
+                          <Label className="text-sm">Airline Name</Label>
+                          <Select
+                            onValueChange={(value) =>
+                              setValue(
+                                `domesticFlights.${index}.airlineName`,
+                                value
+                              )
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Airline" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {domesticAirlines.map((name) => (
+                                <SelectItem key={name} value={name}>
+                                  {name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
                           <Label className="text-sm">Date</Label>
                           <Input
                             type="date"
                             {...register(`domesticFlights.${index}.date`)}
                           />
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <Label className="text-sm">Time</Label>
                           <Input
                             type="time"
                             {...register(`domesticFlights.${index}.time`)}
                           />
                         </div>
-                        <div>
-                          <Label className="text-sm">Airline Name</Label>
+                        <div className="space-y-1">
+                          <Label className="text-sm">Flight No</Label>
                           <Input
-                            {...register(
-                              `domesticFlights.${index}.airlineName`
-                            )}
+                            placeholder="Flight No"
+                            {...register(`domesticFlights.${index}.flightNo`)}
                           />
                         </div>
                         <div>
-                          <Label className="text-sm">Flight No</Label>
-                          <Input
-                            {...register(`domesticFlights.${index}.flightNo`)}
-                          />
+                          {domesticFlightFields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeDomesticFlight(index)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -753,6 +1058,7 @@ export default function NewBookingPage() {
                       size="sm"
                       onClick={() =>
                         appendHotel({
+                          city: "", // <-- This is the only line you need to add here
                           name: "",
                           checkIn: "",
                           checkOut: "",
@@ -765,55 +1071,108 @@ export default function NewBookingPage() {
                     </Button>
                   </div>
 
-                  {hotelFields.map((field, index) => (
-                    <div key={field.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h5 className="font-medium">Hotel Name {index + 1}</h5>
-                        {hotelFields.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeHotel(index)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <Label className="text-sm">Hotel Name</Label>
-                          <Input
-                            {...register(`hotels.${index}.name`)}
-                            placeholder="Hotel name"
-                          />
+                  {hotelFields.map((field, index) => {
+                    const selectedCity = watch(
+                      `hotels.${index}.city`
+                    ) as keyof typeof hotelsByCity;
+
+                    return (
+                      <div key={field.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h5 className="font-medium">Hotel {index + 1}</h5>
+                          {hotelFields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeHotel(index)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                        <div>
-                          <Label className="text-sm">Check-in</Label>
-                          <Input
-                            type="date"
-                            {...register(`hotels.${index}.checkIn`)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Check-out</Label>
-                          <Input
-                            type="date"
-                            {...register(`hotels.${index}.checkOut`)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Status</Label>
-                          <RadioGroup
-                            defaultValue="pending"
-                            onValueChange={(value) =>
-                              setValue(
-                                `hotels.${index}.status`,
-                                value as "pending" | "confirmed"
-                              )
-                            }
-                          >
-                            <div className="flex items-center space-x-4 flex-wrap">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                          <div>
+                            <Label className="text-sm">City</Label>
+                            <Select
+                              onValueChange={(value) => {
+                                setValue(`hotels.${index}.city`, value);
+                                setValue(`hotels.${index}.name`, "");
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select city" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {citiesWithHotels.map((city) => (
+                                  <SelectItem key={city} value={city}>
+                                    {city}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm">Hotel Name</Label>
+                            <Select
+                              disabled={!selectedCity}
+                              value={watch(`hotels.${index}.name`)}
+                              onValueChange={(value) =>
+                                setValue(`hotels.${index}.name`, value)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select hotel" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {selectedCity && hotelsByCity[selectedCity] ? (
+                                  // highlight-next-line
+                                  hotelsByCity[selectedCity].map(
+                                    (hotelName: string) => (
+                                      <SelectItem
+                                        key={hotelName}
+                                        value={hotelName}
+                                      >
+                                        {hotelName}
+                                      </SelectItem>
+                                    )
+                                  )
+                                ) : (
+                                  <SelectItem value="null" disabled>
+                                    No city selected
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm">Check-in</Label>
+                            <Input
+                              type="date"
+                              {...register(`hotels.${index}.checkIn`)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm">Check-out</Label>
+                            <Input
+                              type="date"
+                              {...register(`hotels.${index}.checkOut`)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm">Status</Label>
+                            <RadioGroup
+                              defaultValue="pending"
+                              onValueChange={(value) =>
+                                setValue(
+                                  `hotels.${index}.status`,
+                                  value as "pending" | "confirmed"
+                                )
+                              }
+                              className="flex items-center space-x-4 pt-2"
+                            >
                               <div className="flex items-center space-x-2">
                                 <RadioGroupItem
                                   value="pending"
@@ -832,12 +1191,12 @@ export default function NewBookingPage() {
                                   Confirmed
                                 </Label>
                               </div>
-                            </div>
-                          </RadioGroup>
+                            </RadioGroup>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Nile Cruise */}
@@ -991,7 +1350,6 @@ export default function NewBookingPage() {
                           <TableHead>Date</TableHead>
                           <TableHead>City</TableHead>
                           <TableHead>Details</TableHead>
-                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1054,13 +1412,6 @@ export default function NewBookingPage() {
                     </Table>
                   </div>
                 </div>
-
-                {/* <div className="flex justify-end no-print">
-                  <Button variant="outline" onClick={handlePrintBooking}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    Make PDF
-                  </Button>
-                </div> */}
               </CardContent>
             </Card>
 
@@ -1081,16 +1432,21 @@ export default function NewBookingPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-base font-medium">
-                        No. of Pax (1-15):
+                      <Label
+                        htmlFor="paxCount"
+                        className="text-base font-medium"
+                      >
+                        No. of Pax:
                       </Label>
                       <Select
-                        onValueChange={(value) =>
-                          setValue(
-                            "cairoTransfer.paxCount",
-                            Number.parseInt(value)
-                          )
-                        }
+                        value={watch("cairoTransfer.paxCount")?.toString()}
+                        onValueChange={(value) => {
+                          const numValue = Number.parseInt(value);
+                          setValue("paxCount", numValue);
+                          setValue("cairoTransfer.paxCount", numValue);
+                          setValue("aswanLuxorTransfer.paxCount", numValue);
+                          setValue("meetingAssist.paxCount", numValue);
+                        }}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select pax count" />
@@ -1119,12 +1475,59 @@ export default function NewBookingPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {vanTypes.map((van) => (
-                            <SelectItem key={van.id} value={van.name}>
-                              {van.name} (Capacity: {van.capacity})
+                            <SelectItem key={van} value={van}>
+                              {van}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1  md:grid-cols-3 gap-4">
+                    <div>
+                      <Label
+                        htmlFor="driver name"
+                        className="text-base font-medium"
+                      >
+                        Driver name:
+                      </Label>
+                      <Input
+                        id="driver name"
+                        {...register("cairoTransfer.driver.name", {
+                          required: "driver name is required",
+                        })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="driver contact"
+                        className="text-base font-medium"
+                      >
+                        Driver Contact:
+                      </Label>
+                      <Input
+                        id="driver Contact"
+                        {...register("cairoTransfer.driver.contact", {
+                          required: "driver contact is required",
+                        })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="driver Description"
+                        className="text-base font-medium"
+                      >
+                        Driver Description:
+                      </Label>
+                      <Input
+                        id="driver Description"
+                        {...register("cairoTransfer.driver.description", {
+                          // required: "driver name is required",
+                        })}
+                        className="mt-1"
+                      />
                     </div>
                   </div>
 
@@ -1159,7 +1562,6 @@ export default function NewBookingPage() {
                             <TableHead>Date</TableHead>
                             <TableHead>City</TableHead>
                             <TableHead>Description</TableHead>
-                            <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1231,26 +1633,6 @@ export default function NewBookingPage() {
                       </Table>
                     </div>
                   </div>
-
-                  {/* <div>
-                    <Label className="text-base font-medium">
-                      Send Service Order by:
-                    </Label>
-                    <div className="flex space-x-4 mt-2 flex-wrap gap-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="cairo-whatsapp" />
-                        <Label htmlFor="cairo-whatsapp">WhatsApp</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="cairo-text" />
-                        <Label htmlFor="cairo-text">Text Message</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="cairo-email" />
-                        <Label htmlFor="cairo-email">Email</Label>
-                      </div>
-                    </div>
-                  </div> */}
                 </div>
 
                 <Separator />
@@ -1267,12 +1649,14 @@ export default function NewBookingPage() {
                         No. of Pax (1-15):
                       </Label>
                       <Select
-                        onValueChange={(value) =>
-                          setValue(
-                            "aswanLuxorTransfer.paxCount",
-                            Number.parseInt(value)
-                          )
-                        }
+                        value={watch("aswanLuxorTransfer.paxCount")?.toString()}
+                        onValueChange={(value) => {
+                          const numValue = Number.parseInt(value);
+                          setValue("paxCount", numValue);
+                          setValue("cairoTransfer.paxCount", numValue);
+                          setValue("aswanLuxorTransfer.paxCount", numValue);
+                          setValue("meetingAssist.paxCount", numValue);
+                        }}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select pax count" />
@@ -1301,8 +1685,8 @@ export default function NewBookingPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {vanTypes.map((van) => (
-                            <SelectItem key={van.id} value={van.name}>
-                              {van.name} (Capacity: {van.capacity})
+                            <SelectItem key={van} value={van}>
+                              {van}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1341,7 +1725,6 @@ export default function NewBookingPage() {
                             <TableHead>Date</TableHead>
                             <TableHead>City</TableHead>
                             <TableHead>Description</TableHead>
-                            <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1413,26 +1796,6 @@ export default function NewBookingPage() {
                       </Table>
                     </div>
                   </div>
-
-                  {/* <div>
-                    <Label className="text-base font-medium">
-                      Send Service Order by:
-                    </Label>
-                    <div className="flex space-x-4 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="aswan-whatsapp" />
-                        <Label htmlFor="aswan-whatsapp">WhatsApp</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="aswan-text" />
-                        <Label htmlFor="aswan-text">Text Message</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="aswan-email" />
-                        <Label htmlFor="aswan-email">Email</Label>
-                      </div>
-                    </div>
-                  </div> */}
                 </div>
               </CardContent>
             </Card>
@@ -1454,13 +1817,29 @@ export default function NewBookingPage() {
                     >
                       No. of Pax:
                     </Label>
-                    <Input
-                      id="meetingPax"
-                      type="number"
-                      {...register("meetingAssist.paxCount")}
-                      placeholder="Number of passengers"
-                      className="mt-1"
-                    />
+                    <Select
+                      value={watch("meetingAssist.paxCount")?.toString()}
+                      onValueChange={(value) => {
+                        const numValue = Number.parseInt(value);
+                        setValue("paxCount", numValue);
+                        setValue("cairoTransfer.paxCount", numValue);
+                        setValue("aswanLuxorTransfer.paxCount", numValue);
+                        setValue("meetingAssist.paxCount", numValue);
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select pax count" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 15 }, (_, i) => i + 1).map(
+                          (num) => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -1478,7 +1857,38 @@ export default function NewBookingPage() {
                     />
                   </div>
                 </div>
-
+                <div className="grid grid-cols-1  md:grid-cols-3 gap-4">
+                  <div>
+                    <Label
+                      htmlFor="driver name"
+                      className="text-base font-medium"
+                    >
+                      Driver name:
+                    </Label>
+                    <Input
+                      id="driver name"
+                      {...register("meetingAssist.driver.name", {
+                        required: "driver name is required",
+                      })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="driver contact"
+                      className="text-base font-medium"
+                    >
+                      Driver Contact:
+                    </Label>
+                    <Input
+                      id="driver Contact"
+                      {...register("meetingAssist.driver.contact", {
+                        required: "driver contact is required",
+                      })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-4">
                   <Label className="text-base font-medium">
                     Arrival Flight Details:
@@ -1500,10 +1910,22 @@ export default function NewBookingPage() {
                     </div>
                     <div>
                       <Label className="text-sm">Airline Name</Label>
-                      <Input
-                        {...register("meetingAssist.arrivalFlight.airlineName")}
-                        placeholder="EgyptAir"
-                      />
+                      <Select
+                        onValueChange={(value) =>
+                          setValue("arrivalFlight.airlineName", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Airline" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {internationalAirlines.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label className="text-sm">Flight No</Label>
@@ -1539,29 +1961,10 @@ export default function NewBookingPage() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* <div className="flex space-x-4 no-print flex-wrap">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleWhatsAppShare}
-                    className="gap-3"
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Send WhatsApp
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePrintBooking}
-                  >
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print service order
-                  </Button>
-                </div> */}
               </CardContent>
             </Card>
 
+            {/* 5. Guide Details */}
             {/* 5. Guide Details */}
             <Card>
               <CardHeader>
@@ -1571,194 +1974,22 @@ export default function NewBookingPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-8">
-                {guideFields.map((field, guideIndex) => (
-                  <div key={field.id} className="border rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h4 className="text-lg font-semibold">
-                        Guide {guideIndex + 1}
-                      </h4>
-                      {guideFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeGuide(guideIndex)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div>
-                        <Label className="text-base font-medium">City:</Label>
-                        <Select
-                          onValueChange={(value) =>
-                            setValue(`guides.${guideIndex}.city`, value)
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Select city" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {cities.map((city) => (
-                              <SelectItem key={city} value={city}>
-                                {city}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label className="text-base font-medium">
-                          Guide Name:
-                        </Label>
-                        <Input
-                          {...register(`guides.${guideIndex}.guideName`)}
-                          placeholder="Guide name"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div>
-                        <Label className="text-base font-medium">
-                          Guest Nationality:
-                        </Label>
-                        <Select
-                          onValueChange={(value) =>
-                            setValue(
-                              `guides.${guideIndex}.guestNationality`,
-                              value
-                            )
-                          }
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Select nationality" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {nationalities.map((nationality) => (
-                              <SelectItem key={nationality} value={nationality}>
-                                {nationality}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label className="text-base font-medium">
-                          Pickup Hotel Location:
-                        </Label>
-                        <Input
-                          {...register(
-                            `guides.${guideIndex}.pickupHotelLocation`
-                          )}
-                          placeholder="Hotel location"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div>
-                        <Label className="text-base font-medium">
-                          No. of Pax - Adults:
-                        </Label>
-                        <Input
-                          type="number"
-                          {...register(`guides.${guideIndex}.paxAdults`)}
-                          placeholder="Number of adults"
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-base font-medium">
-                          No. of Pax - Children:
-                        </Label>
-                        <Input
-                          type="number"
-                          {...register(`guides.${guideIndex}.paxChildren`)}
-                          placeholder="Number of children"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Guide Daily Schedule */}
-                    <div className="space-y-4">
-                      <Label className="text-base font-medium">
-                        Daily Schedule
-                      </Label>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Day</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Time</TableHead>
-                              <TableHead>Include</TableHead>
-                              <TableHead>Exclude</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {Array.from({ length: 4 }, (_, dayIndex) => (
-                              <TableRow key={dayIndex}>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    {...register(
-                                      `guides.${guideIndex}.days.${dayIndex}.day`
-                                    )}
-                                    defaultValue={dayIndex + 1}
-                                    className="w-20"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="date"
-                                    {...register(
-                                      `guides.${guideIndex}.days.${dayIndex}.date`
-                                    )}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="time"
-                                    {...register(
-                                      `guides.${guideIndex}.days.${dayIndex}.time`
-                                    )}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Textarea
-                                    {...register(
-                                      `guides.${guideIndex}.days.${dayIndex}.include`
-                                    )}
-                                    placeholder="What's included..."
-                                    rows={2}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Textarea
-                                    {...register(
-                                      `guides.${guideIndex}.days.${dayIndex}.exclude`
-                                    )}
-                                    placeholder="What's excluded..."
-                                    rows={2}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  </div>
+                {/* --- بداية التعديل --- */}
+                {guideFields.map((guideItem, guideIndex) => (
+                  <GuideItem
+                    key={guideItem.id}
+                    guideItem={guideItem}
+                    guideIndex={guideIndex}
+                    control={control}
+                    register={register}
+                    setValue={setValue}
+                    removeGuide={removeGuide}
+                    guideFields={guideFields}
+                    cities={cities}
+                    nationalities={nationalities}
+                  />
                 ))}
+                {/* --- نهاية التعديل --- */}
 
                 <Button
                   type="button"
@@ -1784,28 +2015,8 @@ export default function NewBookingPage() {
                   }
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Guide {guideFields.length + 1}
+                  Add Guide
                 </Button>
-
-                {/* Notes for the Guide */}
-                {/* <div className="bg-muted p-4 rounded-lg">
-                  <h5 className="font-medium mb-2">Notes for the Guide</h5>
-                  <ul className="text-sm space-y-1 text-muted-foreground">
-                    <li>- Be on time at pickup location.</li>
-                    <li>
-                      - Follow the program strictly unless client requests
-                      changes.
-                    </li>
-                    <li>
-                      - Any extra service requested must be reported to
-                      operations team.
-                    </li>
-                    <li>
-                      - Kindly send daily feedback or updates to [Operations
-                      Contact / WhatsApp].
-                    </li>
-                  </ul>
-                </div> */}
               </CardContent>
             </Card>
 
@@ -1813,9 +2024,7 @@ export default function NewBookingPage() {
             <div className="flex justify-center no-print">
               <Button type="submit" size="lg" className="px-8">
                 <Save className="mr-2 h-5 w-5" />
-                <Link href="/bookings/new/accounting">
-                  Create Booking & Go to Accounting
-                </Link>
+                Create Booking
               </Button>
             </div>
           </form>

@@ -3,6 +3,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -12,180 +13,50 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  downloadInvoicePDF,
-  generateInvoicePDFBlob,
-  shareInvoicePDF,
-} from "@/lib/pdf-utils";
-import { useTranslations } from "next-intl";
-import { useParams, useRouter } from "next/navigation";
-// in InvoiceViewPage.tsx
-// Remove old imports if any
-import { useToast } from "@/hooks/use-toast";
-import { sampleBookings, sampleInvoices } from "@/lib/fake-data";
-import {
-  ArrowLeft,
-  Calendar,
-  CheckCircle,
-  DollarSign,
-  Download,
-  Edit,
-  FileText,
-  MessageSquare,
-  Printer,
-} from "lucide-react";
+import { Edit, Printer } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { sampleInvoices } from "./fakedata"; // Assuming your new object is here
+
+// Helper function to format currency
+const formatCurrency = (amount: number, currency: string = "EGP") => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+  }).format(amount || 0);
+};
 
 export default function InvoiceViewPage() {
   const params = useParams();
   const router = useRouter();
-  const t = useTranslations("invoices");
-  const { toast } = useToast();
 
+  // Find the invoice from the updated fake data
   const invoice = sampleInvoices.find((i) => i.id === params.id);
 
-  const relatedBooking = invoice
-    ? sampleBookings.find((b) => b.id === invoice.bookingId) || null
-    : null;
-
   if (!invoice) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <h2 className="text-2xl font-bold mb-4">Invoice Not Found</h2>
-          <p className="text-muted-foreground mb-6">
-            The invoice you're looking for doesn't exist.
-          </p>
-          <Button onClick={() => router.push("/invoices")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Invoices
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
+    // ... (Not Found component remains the same)
+    return <div>Invoice not found.</div>;
   }
-
-  const [isGenerating, setIsGenerating] = useState(false); // Add this state
-
-  // ✅ New Print Handler
-  const handlePrint = () => {
-    if (!invoice) return;
-    // This will generate the high-quality PDF and open it in a new tab for printing.
-    // It's much better than the old HTML string method.
-    const blob = generateInvoicePDFBlob(invoice, relatedBooking); // We need generateInvoicePDFBlob exported or defined in a scope
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-    URL.revokeObjectURL(url);
-  };
-
-  // ✅ New Download Handler
-  const handleDownloadPDF = async () => {
-    if (!invoice) return;
-    setIsGenerating(true);
-    try {
-      downloadInvoicePDF(invoice, relatedBooking);
-      toast({
-        title: "PDF Downloaded",
-        description: `Invoice ${invoice.invoiceNumber} has been downloaded.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // ✅ New WhatsApp Share Handler
-  const handleWhatsApp = async () => {
-    if (!invoice) return;
-    setIsGenerating(true);
-    try {
-      const message = `🧾 INVOICE DETAILS\n📄 Invoice: ${
-        invoice.invoiceNumber
-      }\n💰 Amount: $${invoice.amount.toLocaleString()} ${
-        invoice.currency
-      }\n📅 Due: ${invoice.dueDate}`;
-      await shareInvoicePDF(invoice, relatedBooking, message);
-    } catch (error: any) {
-      toast({
-        title: "Sharing Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // ... (rest of the component logic)
-
-  const handleMarkPaid = () => {
-    toast({
-      title: "Invoice Updated",
-      description: "Invoice has been marked as paid.",
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "default";
-      case "pending":
-        return "secondary";
-      case "cancelled":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" onClick={() => router.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">
-                Invoice Details
-              </h1>
-              <p className="text-muted-foreground">
-                Invoice: {invoice.invoiceNumber}
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              Invoice: {invoice.invoiceNumber}
+            </h1>
+            <p className="text-muted-foreground">{invoice.title}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" /> Print
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
-              <Download className="mr-2 h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleWhatsApp}>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              WhatsApp
-            </Button>
-            {invoice.status === "pending" && (
-              <Button variant="outline" size="sm" onClick={handleMarkPaid}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Mark Paid
-              </Button>
-            )}
+            {/* Add other action buttons like download if needed */}
             <Link href={`/invoices/${invoice.id}/edit`}>
               <Button size="sm">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
+                <Edit className="mr-2 h-4 w-4" /> Edit
               </Button>
             </Link>
           </div>
@@ -194,349 +65,308 @@ export default function InvoiceViewPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Invoice Information */}
+            {/* Main Invoice & Extra Incoming */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Invoice Information
-                </CardTitle>
+                <CardTitle>Income Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <h3 className="font-semibold mb-2">Main Invoice</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Invoice Number
-                    </label>
-                    <p className="text-lg font-semibold">
-                      {invoice.invoiceNumber}
+                    <Label>Total Invoice</Label>
+                    <p className="font-bold">
+                      {formatCurrency(
+                        invoice.totalInvoiceAmount,
+                        invoice.totalInvoiceCurrency
+                      )}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Title
-                    </label>
-                    <p className="text-lg">{invoice.title}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Amount
-                    </label>
-                    <p className="text-lg font-semibold flex items-center">
-                      <DollarSign className="mr-1 h-4 w-4" />
-                      {invoice.amount.toLocaleString()} {invoice.currency}
+                    <Label>Paid Amount</Label>
+                    <p>
+                      {formatCurrency(
+                        invoice.paidAmount,
+                        invoice.totalInvoiceCurrency
+                      )}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Due Date
-                    </label>
-                    <p className="text-lg flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {invoice.dueDate}
+                    <Label>Rest Amount</Label>
+                    <p>
+                      {formatCurrency(
+                        invoice.restAmount,
+                        invoice.restAmountCurrency
+                      )}
                     </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Payment Method
-                    </label>
-                    <p className="text-lg capitalize">
-                      {invoice.paymentMethod}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Status
-                    </label>
-                    <div className="mt-1">
-                      <Badge
-                        variant={getStatusColor(invoice.status)}
-                        className="text-sm px-3 py-1"
-                      >
-                        {invoice.status}
-                      </Badge>
-                    </div>
                   </div>
                 </div>
-                {invoice.notes && (
-                  <div className="mt-6">
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Notes
-                    </label>
-                    <p className="text-sm mt-2 p-3 bg-muted rounded-lg">
-                      {invoice.notes}
-                    </p>
-                  </div>
-                )}
+                <Separator className="my-4" />
+                <h3 className="font-semibold mb-2">Extra Incoming</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoice.extraIncoming.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.type}</TableCell>
+                        <TableCell>
+                          {formatCurrency(item.amount, item.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              item.status === "paid" ? "default" : "secondary"
+                            }
+                          >
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 
-            {/* Related Booking */}
-            {relatedBooking && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center">
-                      <Calendar className="mr-2 h-5 w-5" />
-                      Related Booking
-                    </span>
-                    <Link href={`/bookings/${relatedBooking.id}`}>
-                      <Button variant="outline" size="sm">
-                        View Booking
-                      </Button>
-                    </Link>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">
-                        File Number
-                      </label>
-                      <p className="text-lg font-semibold">
-                        {relatedBooking.fileNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Supplier
-                      </label>
-                      <p className="text-lg">{relatedBooking.supplier}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Travel Dates
-                      </label>
-                      <p className="text-lg">
-                        {relatedBooking.arrivalDate} -{" "}
-                        {relatedBooking.departureDate}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Number of Pax
-                      </label>
-                      <p className="text-lg">{relatedBooking.paxCount}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Invoice Breakdown */}
+            {/* Expenses Breakdown */}
             <Card>
               <CardHeader>
-                <CardTitle>Invoice Breakdown</CardTitle>
+                <CardTitle>Expenses Breakdown</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Unit Price</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>
-                          Hotel Accommodation - Four Seasons Cairo
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Accommodation</Badge>
-                        </TableCell>
-                        <TableCell>7 nights</TableCell>
-                        <TableCell>$200.00</TableCell>
-                        <TableCell className="text-right font-medium">
-                          $1,400.00
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Flight Tickets - EgyptAir</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Transportation</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {relatedBooking?.paxCount || 2} pax
-                        </TableCell>
-                        <TableCell>$450.00</TableCell>
-                        <TableCell className="text-right font-medium">
-                          $900.00
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Private Transportation</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Transportation</Badge>
-                        </TableCell>
-                        <TableCell>7 days</TableCell>
-                        <TableCell>$80.00</TableCell>
-                        <TableCell className="text-right font-medium">
-                          $560.00
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Tour Guide Services</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Services</Badge>
-                        </TableCell>
-                        <TableCell>7 days</TableCell>
-                        <TableCell>$60.00</TableCell>
-                        <TableCell className="text-right font-medium">
-                          $420.00
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>Entrance Fees & Activities</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">Activities</Badge>
-                        </TableCell>
-                        <TableCell>Various</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell className="text-right font-medium">
-                          $320.00
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <Separator className="my-6" />
-
-                {/* Totals */}
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>$3,600.00</span>
+              <CardContent className="space-y-4">
+                {/* Loop through each expense type and render a table */}
+                {invoice.accommodation.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Accommodation</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.accommodation.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>
+                              {formatCurrency(item.totalAmount, item.currency)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.status === "paid"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Tax (14%):</span>
-                    <span>$504.00</span>
+                )}
+                {invoice.domesticFlights.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Domestic Flights</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Details</TableHead>
+                          <TableHead>Cost</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.domesticFlights.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{item.details}</TableCell>
+                            <TableCell>
+                              {formatCurrency(item.cost, item.currency)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.status === "paid"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Service Fee:</span>
-                    <span>$100.00</span>
+                )}
+                {invoice.entranceTickets.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Entrance Tickets</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Site</TableHead>
+                          <TableHead>Cost</TableHead>
+                          <TableHead>No.</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.entranceTickets.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{item.site}</TableCell>
+                            <TableCell>
+                              {formatCurrency(item.cost, item.currency)}
+                            </TableCell>
+                            <TableCell>{item.no}</TableCell>
+                            <TableCell>
+                              {formatCurrency(item.total, item.currency)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Grand Total:</span>
-                    <span>
-                      ${invoice.amount.toLocaleString()} {invoice.currency}
-                    </span>
+                )}
+                {invoice.guide.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Guides</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Cost</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.guide.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>
+                              {formatCurrency(item.cost, item.currency)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.status === "paid"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                </div>
+                )}
+                {invoice.transportation.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Transportation</h3>
+                    {invoice.transportation.map((item, i) => (
+                      <div key={i} className="border p-2 rounded-lg mb-2">
+                        <p>
+                          <strong>{item.supplierName}</strong> in {item.city} -{" "}
+                          {formatCurrency(item.amount, item.currency)} (
+                          {item.status})
+                        </p>
+                        <h4 className="text-sm font-semibold mt-2">
+                          Guide Details:
+                        </h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Guide</TableHead>
+                              <TableHead>Cost</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {item.guides.map((g, gi) => (
+                              <TableRow key={gi}>
+                                <TableCell>{g.guideNumber}</TableCell>
+                                <TableCell>
+                                  {formatCurrency(g.totalCost, "EGP")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Status Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Invoice Status</CardTitle>
+                <CardTitle>Financial Summary</CardTitle>
               </CardHeader>
-              <CardContent>
-                <Badge
-                  variant={getStatusColor(invoice.status)}
-                  className="text-lg px-4 py-2"
-                >
-                  {invoice.status}
-                </Badge>
-                <Separator className="my-4" />
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Created:</span>
-                    <span>Jan 15, 2024</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Due Date:</span>
-                    <span>{invoice.dueDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Payment Method:
-                    </span>
-                    <span className="capitalize">{invoice.paymentMethod}</span>
-                  </div>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between font-medium">
+                  <Label>Grand Total Income</Label>
+                  <span>{formatCurrency(invoice.grandTotalIncomeEGP)}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <Label>Grand Total Expenses</Label>
+                  <span>{formatCurrency(invoice.grandTotalExpensesEGP)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-bold text-lg">
+                  <Label>Rest Profit</Label>
+                  <span>{formatCurrency(invoice.restProfitEGP)}</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>Basic Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-transparent"
-                  onClick={handlePrint}
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print Invoice
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-transparent"
-                  onClick={handleDownloadPDF}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-transparent"
-                  onClick={handleWhatsApp}
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Send via WhatsApp
-                </Button>
-                {invoice.status === "pending" && (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start bg-transparent"
-                    onClick={handleMarkPaid}
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">File Number:</span>
+                  <strong>{invoice.fileNumber}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Supplier:</span>
+                  <strong>{invoice.supplierName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Due Date:</span>
+                  <strong>{invoice.dueDate}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Payment Method:</span>
+                  <strong>{invoice.paymentMethod}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge
+                    variant={
+                      invoice.status === "paid" ? "default" : "secondary"
+                    }
                   >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Mark as Paid
-                  </Button>
-                )}
-                <Link href={`/invoices/${invoice.id}/edit`} className="block">
-                  <Button className="w-full justify-start">
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Invoice
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            {/* Payment Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-medium">Bank Transfer:</span>
-                    <br />
-                    <span>Account: 1234567890</span>
-                    <br />
-                    <span>IBAN: EG123456789012345678901234</span>
-                  </div>
-                  <Separator className="my-3" />
-                  <div>
-                    <span className="font-medium">For inquiries:</span>
-                    <br />
-                    <span>+20 112 263 6253</span>
-                    <br />
-                    <span>billing@bookandgo.com</span>
-                  </div>
+                    {invoice.status}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>

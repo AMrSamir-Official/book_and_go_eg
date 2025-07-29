@@ -1,5 +1,6 @@
 "use client";
 
+import { logoutAction } from "@/app/actions/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +19,10 @@ import { memo } from "react";
 export const HeaderUserMenu = memo(function HeaderUserMenu() {
   const t = useTranslations("common");
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   const handleLogout = () => {
-    logout();
+    logoutAction();
     router.push("/login");
   };
 

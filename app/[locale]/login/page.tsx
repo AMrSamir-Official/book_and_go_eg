@@ -1,5 +1,9 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
+import { loginAction } from "./actions"; // استيراد الـ Server Action من الملف الجديد
+
+// استيراد المكونات التي لا تزال تحتاجها
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,70 +15,38 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { authenticateUser, useAuthStore } from "@/lib/auth";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useLocale } from "next-intl";
+import { useActionState, useState } from "react"; // نحتاج فقط لـ useState لإظهار/إخفاء كلمة المرور
 
-interface LoginFormData {
-  email: string;
-  password: string;
+// مكون داخلي لإظهار حالة التحميل تلقائيًا
+function SubmitButton() {
+  const { pending } = useFormStatus(); // هذا الـ hook يعرف متى يكون الفورم في حالة إرسال
+
+  return (
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          جاري تسجيل الدخول...
+        </>
+      ) : (
+        "تسجيل الدخول"
+      )}
+    </Button>
+  );
 }
 
 export default function LoginPage() {
-  const { isAuthenticated } = useAuthStore();
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/dashboard");
-    }
-  }, [isAuthenticated]);
-  const t = useTranslations("auth");
-  const tCommon = useTranslations("common");
-  const router = useRouter();
-  const { login, setLoading } = useAuthStore();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  // useActionState  يربط الـ Server Action بحالة المكون ويعيد الحالة الأخيرة (مثل رسالة الخطأ)
+  const [state, formAction] = useActionState(loginAction, undefined);
+
+  // لم نعد نحتاج إلا لـ state واحد لإظهار/إخفاء كلمة المرور
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>();
-
-  const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
-    setLoading(true);
-    setError("");
-    console.log("A. Form submitted. Calling authenticateUser...");
-    try {
-      const user = await authenticateUser(data.email, data.password);
-      console.log("B. Received response from authenticateUser:", user);
-      if (user) {
-        console.log("C. Login success! Updating state and redirecting...");
-        login(user);
-        toast({
-          title: "Welcome back!",
-          description: `Successfully logged in as ${user.name}`,
-        });
-        router.push("/dashboard");
-      } else {
-        console.log("C. Login failed. User is null.");
-        setError("Invalid email or password. Please try again.");
-      }
-    } catch (error) {
-      console.error("!!! UNEXPECTED ERROR in onSubmit:", error);
-      setError("An error occurred during login. Please try again.");
-    } finally {
-      setIsLoading(false);
-      setLoading(false);
-    }
-  };
-
+  // تم حذف: useForm, useEffect, useRouter, useToast, useAuthStore, useState (error, isLoading)
+  // لأن الـ Server Action يعالج كل هذا الآن.
+  const locale = useLocale();
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md">
@@ -88,10 +60,13 @@ export default function LoginPage() {
           <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {error && (
+          {/* لم نعد بحاجة لـ handleSubmit. الـ form يستدعي الـ action مباشرة */}
+          <form action={formAction} className="space-y-4">
+            <input type="hidden" name="locale" value={locale} />
+            {/* عرض رسالة الخطأ القادمة من الـ Server Action */}
+            {state?.message && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{state.message}</AlertDescription>
               </Alert>
             )}
 
@@ -99,22 +74,11 @@ export default function LoginPage() {
               <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
+                name="email" // <-- مهم: استخدم `name` بدلاً من `register`
                 type="email"
                 placeholder="Enter your email"
-                {...register("email", {
-                  required: "Email is required",
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Invalid email address",
-                  },
-                })}
-                disabled={isLoading}
+                required
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">
-                  {errors.email.message}
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -122,16 +86,10 @@ export default function LoginPage() {
               <div className="relative">
                 <Input
                   id="password"
+                  name="password" // <-- مهم: استخدم `name`
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  {...register("password", {
-                    required: "Password is required",
-                    minLength: {
-                      value: 6,
-                      message: "Password must be at least 6 characters",
-                    },
-                  })}
-                  disabled={isLoading}
+                  required
                 />
                 <Button
                   type="button"
@@ -139,7 +97,6 @@ export default function LoginPage() {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -148,23 +105,9 @@ export default function LoginPage() {
                   )}
                 </Button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">
-                  {errors.password.message}
-                </p>
-              )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </Button>
+            <SubmitButton />
           </form>
 
           <div className="mt-6 p-4 bg-muted rounded-lg">

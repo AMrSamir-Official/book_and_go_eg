@@ -1,13 +1,17 @@
-import { RouteGuard } from "@/components/auth/route-guard";
+// app/[locale]/layout.tsx (الكود النهائي بعد التصحيح)
+
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
+import { getCurrentUser } from "@/lib/session";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import type React from "react";
 import "../globals.css";
+
+import AuthProvider from "@/components/AuthProvider"; // تأكد من المسار
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,10 +29,12 @@ export default async function RootLayout({
 }) {
   const messages = await getMessages();
   const cookieStore = await cookies();
-
-  // Get theme and locale from cookies for SSR consistency
   const savedTheme = cookieStore.get("theme")?.value || "system";
   const savedLocale = cookieStore.get("locale")?.value || locale;
+
+  const user = await getCurrentUser();
+  // 1. قراءة التوكن من الكوكي
+  const token = cookieStore.get("token")?.value || null;
 
   return (
     <html
@@ -48,9 +54,10 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <RouteGuard>
+            {/* 2. تمرير المستخدم والتوكن معًا */}
+            <AuthProvider user={user} token={token}>
               <SidebarProvider>{children}</SidebarProvider>
-            </RouteGuard>
+            </AuthProvider>
             <Toaster />
           </ThemeProvider>
         </NextIntlClientProvider>

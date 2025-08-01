@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // --- الإعدادات ---
 const locales = ["en", "ar"];
-const PUBLIC_ROUTES = ["/login"];
+const PUBLIC_ROUTES = ["/","/login"];
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // --- إعداد الـ intl Middleware ---

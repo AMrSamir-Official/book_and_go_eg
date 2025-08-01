@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // --- الإعدادات ---
 const locales = ["en", "ar"];
-const PUBLIC_ROUTES = ["/","/login"];
+const PUBLIC_ROUTES = ["/", "/login"];
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // --- إعداد الـ intl Middleware ---
@@ -49,7 +49,8 @@ async function verifyToken(token: string): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("token")?.value;
-  const locale = locales.find((l) => pathname.startsWith(`/${l}`)) || "";
+  // const locale = locales.find((l) => pathname.startsWith(`/${l}`)) || "";
+  const locale = request.nextUrl.locale || "en";
 
   // استخراج الـ path بدون اللغة
   const pathWithoutLocale = pathname

@@ -1,112 +1,11 @@
+import { BookingData } from "@/types/bookingData";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { amiriFontBase64 } from "../amiri-font"; // Make sure this path is correct
+import { logoBase64 } from "./logo";
 
 // The BookingData interface should be identical to the one in the view page
 // It's best practice to have this in a shared types file.
-interface BookingData {
-  id: string;
-  fileNumber: string;
-  vendor: string;
-  paxCount: number;
-  arrivalDate: string;
-  departureDate: string;
-  numberOfNights: number;
-  nationality: string;
-  status: "pending" | "confirmed" | "cancelled";
-  createdAt: string;
-  arrivalFlight: {
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  };
-  departureFlight: {
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  };
-  domesticFlights: Array<{
-    departure: string;
-    arrival: string;
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  }>;
-  hotels: Array<{
-    city: string;
-    name: string;
-    checkIn: string;
-    checkOut: string;
-    status: "pending" | "confirmed";
-  }>;
-  nileCruise: {
-    name: string;
-    checkIn: string;
-    checkOut: string;
-    status: "pending" | "confirmed";
-  };
-  include: string;
-  exclude: string;
-  specialNotice: string;
-  dailyProgram: Array<{
-    day: number;
-    date: string;
-    city: string;
-    details: string;
-  }>;
-  cairoTransfer: {
-    paxCount: number;
-    vanType: string;
-    driver: { name: string; contact: string; description: string };
-    days: Array<{
-      day: number;
-      date: string;
-      city: string;
-      description: string;
-    }>;
-  };
-  aswanLuxorTransfer: {
-    paxCount: number;
-    vanType: string;
-    days: Array<{
-      day: number;
-      date: string;
-      city: string;
-      description: string;
-    }>;
-  };
-  meetingAssist: {
-    paxCount: number;
-    name: string;
-    driver: { name: string; contact: string };
-    arrivalFlight: {
-      date: string;
-      time: string;
-      airlineName: string;
-      flightNo: string;
-    };
-    nationality: string;
-  };
-  guides: Array<{
-    id: string;
-    city: string;
-    guideName: string;
-    guestNationality: string;
-    paxAdults: number;
-    paxChildren: number;
-    pickupHotelLocation: string;
-    days: Array<{
-      day: number;
-      date: string;
-      time: string;
-      include: string;
-      exclude: string;
-    }>;
-  }>;
-}
 
 // We need to tell TypeScript that the jsPDF instance will have the autoTable method
 declare module "jspdf" {
@@ -126,8 +25,9 @@ const generatePDFBlob = (booking: BookingData): Blob => {
     doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
   const pageWidth =
     doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-  let y = 15;
 
+  doc.addImage(logoBase64, "PNG", 15, 10, 50, 15); // الأرقام هي (x, y, width, height) ويمكنك تعديلها
+  let y = 35;
   doc.addFileToVFS("Amiri-Regular.ttf", amiriFontBase64);
   doc.addFont("Amiri-Regular.ttf", "Amiri", "normal", "UTF-8");
   doc.setFont("Amiri");
@@ -175,6 +75,38 @@ const generatePDFBlob = (booking: BookingData): Blob => {
     styles: { font: "Amiri" },
   });
   y = (doc as any).lastAutoTable.finalY + 10;
+
+  if (booking.meetingAssist && booking.meetingAssist.name) {
+    checkPageBreak(60); // Check if there is enough space on the page
+    doc.setFontSize(14);
+    doc.setTextColor("#1e40af"); // لون مختلف للتمييز
+    doc.text("2. Meeting & Assist Details", 14, y);
+    y += 8;
+
+    autoTable(doc, {
+      startY: y,
+      theme: "grid",
+      headStyles: { fillColor: "#1e40af", font: "Amiri", textColor: "#FFFFFF" },
+      bodyStyles: { font: "Amiri" },
+      head: [["Item", "Details"]],
+      body: [
+        ["Guest Name", booking.meetingAssist.name],
+        ["Pax Count", `${booking.meetingAssist.paxCount}`],
+        ["Nationality", booking.meetingAssist.nationality],
+        [
+          "Arrival Flight",
+          `${booking.meetingAssist.arrivalFlight.airlineName} ${booking.meetingAssist.arrivalFlight.flightNo}`,
+        ],
+        [
+          "Arrival Time",
+          `${booking.meetingAssist.arrivalFlight.date} @ ${booking.meetingAssist.arrivalFlight.time}`,
+        ],
+        ["Assigned Driver", booking.meetingAssist.driver.name],
+        ["Driver Contact", booking.meetingAssist.driver.contact],
+      ],
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+  }
 
   // --- 3. Flight Details ---
   checkPageBreak(50);
@@ -343,7 +275,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
 
   checkPageBreak(50);
   doc.setFontSize(12);
-  doc.text("Aswan/Luxor/Hurghada Transfer", 15, y);
+  doc.text("Aswan & Luxor &Hurghada Transfer", 15, y);
   y += 6;
   autoTable(doc, {
     startY: y,
@@ -483,7 +415,8 @@ const generateMeetingAssistPDFBlob = (
   const doc = new jsPDF();
   const pageWidth =
     doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-  let y = 15;
+  doc.addImage(logoBase64, "PNG", 15, 10, 50, 15);
+  let y = 35; //
 
   doc.addFileToVFS("Amiri-Regular.ttf", amiriFontBase64);
   doc.addFont("Amiri-Regular.ttf", "Amiri", "normal", "UTF-8");
@@ -576,7 +509,8 @@ const generateGuidePDFBlob = (
   const doc = new jsPDF();
   const pageWidth =
     doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-  let y = 15;
+  doc.addImage(logoBase64, "PNG", 15, 10, 50, 15);
+  let y = 35;
 
   doc.addFileToVFS("Amiri-Regular.ttf", amiriFontBase64);
   doc.addFont("Amiri-Regular.ttf", "Amiri", "normal", "UTF-8");
@@ -656,6 +590,186 @@ export const shareGuidePDF = async (
   ) {
     await navigator.share({
       title: `Guide Order - ${guide.city}`,
+      text: message,
+      files: [file],
+    });
+  } else {
+    throw new Error("File sharing not supported.");
+  }
+};
+///
+// =================================================================
+// --- Transportation PDF Generation ---
+// =================================================================
+
+// Define a reusable interface for transfer data to avoid repetition
+interface TransferData {
+  paxCount: number;
+  vanType: string;
+  driver?: { name: string; contact: string; description?: string };
+  days: Array<{
+    day: number;
+    date: string;
+    city: string;
+    description: string;
+  }>;
+}
+
+// A generic function to create a PDF for any transfer order
+const generateTransferPDFBlob = (
+  transferData: TransferData,
+  title: string,
+  fileNumber: string
+): Blob => {
+  const doc = new jsPDF();
+  const pageWidth =
+    doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+  doc.addImage(logoBase64, "PNG", 15, 10, 50, 15);
+  let y = 45;
+
+  doc.addFileToVFS("Amiri-Regular.ttf", amiriFontBase64);
+  doc.addFont("Amiri-Regular.ttf", "Amiri", "normal", "UTF-8");
+  doc.setFont("Amiri");
+
+  // 1. Header
+  doc.setFontSize(20);
+  doc.setTextColor("#003366");
+  doc.text(title, pageWidth / 2, y, { align: "center" });
+  y += 8;
+  doc.setFontSize(12);
+  doc.setTextColor("#333333");
+  doc.text(`File Number: ${fileNumber}`, pageWidth / 2, y, { align: "center" });
+  y += 15;
+
+  // 2. Basic Info
+  const basicInfoBody = [
+    [
+      `Pax Count: ${transferData.paxCount}`,
+      `Van Type: ${transferData.vanType}`,
+    ],
+  ];
+
+  if (transferData.driver) {
+    basicInfoBody.push([
+      `Driver Name: ${transferData.driver.name}`,
+      `Driver Contact: ${transferData.driver.contact}`,
+    ]);
+    if (transferData.driver.description) {
+      basicInfoBody.push([
+        {
+          content: `Description: ${transferData.driver.description}`,
+          colSpan: 2,
+        },
+      ]);
+    }
+  }
+
+  autoTable(doc, {
+    startY: y,
+    theme: "plain",
+    styles: { font: "Amiri", fontSize: 10 },
+    body: basicInfoBody,
+  });
+  y = (doc as any).lastAutoTable.finalY + 10;
+
+  // 3. Daily Schedule
+  doc.setFontSize(12);
+  doc.text("Daily Schedule", 14, y);
+
+  autoTable(doc, {
+    startY: y + 2,
+    head: [["Day", "Date", "City", "Description"]],
+    body: transferData.days.map((d) => [d.day, d.date, d.city, d.description]),
+    theme: "striped",
+    headStyles: { fillColor: "#6b7280", font: "Amiri", textColor: "#FFFFFF" },
+    bodyStyles: { font: "Amiri" },
+  });
+
+  return doc.output("blob");
+};
+
+// --- Cairo Transfer ---
+export const downloadCairoTransferPDF = (booking: BookingData) => {
+  const blob = generateTransferPDFBlob(
+    booking.cairoTransfer,
+    "Cairo Transfer Service Order",
+    booking.fileNumber
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `CairoTransfer-${booking.fileNumber}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export const shareCairoTransferPDF = async (
+  booking: BookingData,
+  message: string
+) => {
+  const blob = generateTransferPDFBlob(
+    booking.cairoTransfer,
+    "Cairo Transfer Service Order",
+    booking.fileNumber
+  );
+  const file = new File([blob], `CairoTransfer-${booking.fileNumber}.pdf`, {
+    type: "application/pdf",
+  });
+  if (
+    navigator.share &&
+    navigator.canShare &&
+    navigator.canShare({ files: [file] })
+  ) {
+    await navigator.share({
+      title: "Cairo Transfer Order",
+      text: message,
+      files: [file],
+    });
+  } else {
+    throw new Error("File sharing not supported.");
+  }
+};
+
+// --- Aswan/Luxor Transfer ---
+export const downloadAswanLuxorTransferPDF = (booking: BookingData) => {
+  const blob = generateTransferPDFBlob(
+    booking.aswanLuxorTransfer,
+    "Aswan/Luxor/Hurghada Transfer Order",
+    booking.fileNumber
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `AswanLuxorTransfer-${booking.fileNumber}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export const shareAswanLuxorTransferPDF = async (
+  booking: BookingData,
+  message: string
+) => {
+  const blob = generateTransferPDFBlob(
+    booking.aswanLuxorTransfer,
+    "Aswan/Luxor/Hurghada Transfer Order",
+    booking.fileNumber
+  );
+  const file = new File(
+    [blob],
+    `AswanLuxorTransfer-${booking.fileNumber}.pdf`,
+    { type: "application/pdf" }
+  );
+  if (
+    navigator.share &&
+    navigator.canShare &&
+    navigator.canShare({ files: [file] })
+  ) {
+    await navigator.share({
+      title: "Aswan/Luxor Transfer Order",
       text: message,
       files: [file],
     });

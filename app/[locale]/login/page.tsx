@@ -17,8 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLocale } from "next-intl";
-import { useActionState, useState } from "react"; // نحتاج فقط لـ useState لإظهار/إخفاء كلمة المرور
-
+import { useActionState, useEffect, useState } from "react"; // نحتاج فقط لـ useState لإظهار/إخفاء كلمة المرور
 // مكون داخلي لإظهار حالة التحميل تلقائيًا
 function SubmitButton() {
   const { pending } = useFormStatus(); // هذا الـ hook يعرف متى يكون الفورم في حالة إرسال
@@ -44,6 +43,11 @@ export default function LoginPage() {
   // لم نعد نحتاج إلا لـ state واحد لإظهار/إخفاء كلمة المرور
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    if (state?.redirectTo) {
+      window.location.href = state.redirectTo; // ⬅️ إعادة تحميل كاملة (حل مئة بالمئة)
+    }
+  }, [state?.redirectTo]);
   // تم حذف: useForm, useEffect, useRouter, useToast, useAuthStore, useState (error, isLoading)
   // لأن الـ Server Action يعالج كل هذا الآن.
   const locale = useLocale();

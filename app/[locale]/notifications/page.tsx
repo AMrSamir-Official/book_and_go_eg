@@ -1,7 +1,6 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,35 +27,39 @@ import {
   CheckCircle,
   Clock,
   Eye,
+  FileText,
   Loader2,
   MoreHorizontal,
   Search,
   ShieldAlert,
-  Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-// 1. واجهة جديدة تطابق بيانات الـ API
+// 1. واجهة API مرنة تقبل كلا النوعين من الإشعارات
 interface ApiNotification {
   _id: string;
   message: string;
   isRead: boolean;
   createdAt: string;
-  dueId: {
+  // حقول اختيارية للمستحقات
+  dueId?: {
     _id: string;
     name: string;
-    amount: number;
-    currency: "USD" | "EGP";
   };
+  // حقول اختيارية للفواتير
+  invoiceId?: string;
+  invoiceItemId?: string;
 }
 
-// واجهة للبيانات بعد تحليلها للعرض
+// 2. واجهة عرض موحدة للتعامل مع كلا النوعين
 interface DisplayNotification extends ApiNotification {
-  type: "due_reminder" | "overdue";
+  type: "due_reminder" | "invoice_reminder" | "overdue";
   priority: "medium" | "high";
+  title: string;
+  targetUrl: string;
 }
 
 const apiClient = createApiClient();
@@ -72,12 +75,14 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 2. دالة لجلب الإشعارات من الـ API
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get("/notifications");
+      // ملاحظة: تأكد من أن الـ API يرجع dueId و invoiceId مع البيانات اللازمة
+      const response = await apiClient.get(
+        "/notifications?populate=dueId,invoiceId"
+      );
       setNotifications(response.data.data || []);
     } catch (err) {
       setError("Failed to fetch notifications.");
@@ -91,7 +96,6 @@ export default function NotificationsPage() {
     }
   }, [toast]);
 
-  // 3. useEffect لجلب البيانات بعد التحقق من المستخدم
   useEffect(() => {
     if (isAuthLoading) return;
     if (user?.role === "admin") {
@@ -101,74 +105,63 @@ export default function NotificationsPage() {
     }
   }, [isAuthLoading, user, fetchNotifications]);
 
-  // 4. دوال للتعامل مع الـ API
-  const handleMarkAsRead = async (id: string, event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleAction = async (
+    action: () => Promise<any>,
+    successMsg: string,
+    errorMsg: string
+  ) => {
     try {
-      await apiClient.post(`/notifications/${id}/read`);
-      toast({ title: "Success", description: "Notification marked as read." });
-      fetchNotifications(); // إعادة تحميل القائمة
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Could not mark notification as read.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDelete = async (id: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    try {
-      await apiClient.delete(`/notifications/${id}`);
-      toast({ title: "Success", description: "Notification deleted." });
-      fetchNotifications(); // إعادة تحميل القائمة
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Could not delete notification.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await apiClient.post("/notifications/read-all");
-      toast({
-        title: "Success",
-        description: "All notifications marked as read.",
-      });
+      await action();
+      toast({ title: "Success", description: successMsg });
       fetchNotifications();
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Could not mark all notifications as read.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: errorMsg, variant: "destructive" });
     }
   };
 
-  const handleNotificationClick = (notification: ApiNotification) => {
-    router.push(`/dues?highlight=${notification.dueId._id}`);
+  const handleMarkAsRead = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    handleAction(
+      () => apiClient.post(`/notifications/${id}/read`),
+      "Notification marked as read.",
+      "Could not mark as read."
+    );
   };
 
-  // 5. دوال مساعدة لتحليل نوع الإشعار بناءً على الرسالة
-  const parseNotificationType = (
-    message: string
-  ): "due_reminder" | "overdue" => {
-    if (message.toLowerCase().includes("overdue")) return "overdue";
-    return "due_reminder"; // الافتراضي
+  const handleDelete = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    handleAction(
+      () => apiClient.delete(`/notifications/${id}`),
+      "Notification deleted.",
+      "Could not delete notification."
+    );
   };
 
-  const getNotificationIcon = (type: "due_reminder" | "overdue") => {
-    if (type === "overdue")
-      return <AlertTriangle className="h-5 w-5 text-red-500" />;
-    return <Calendar className="h-5 w-5 text-blue-500" />;
+  const markAllAsRead = () => {
+    handleAction(
+      () => apiClient.post("/notifications/read-all"),
+      "All notifications marked as read.",
+      "Could not mark all as read."
+    );
   };
 
-  const getPriorityColor = (priority: "medium" | "high") =>
-    priority === "high" ? "destructive" : "secondary";
+  const handleNotificationClick = (notification: DisplayNotification) => {
+    router.push(notification.targetUrl);
+  };
+
+  // 3. دوال مساعدة محدثة
+  const getNotificationIcon = (type: DisplayNotification["type"]) => {
+    switch (type) {
+      case "overdue":
+        return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      case "due_reminder":
+        return <Calendar className="h-5 w-5 text-blue-500" />;
+      case "invoice_reminder":
+        return <FileText className="h-5 w-5 text-green-500" />;
+      default:
+        return <Bell className="h-5 w-5 text-gray-500" />;
+    }
+  };
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -181,23 +174,45 @@ export default function NotificationsPage() {
     return date.toLocaleDateString();
   };
 
-  // 6. استخدام useMemo لتحليل وفلترة الإشعارات
+  // 4. استخدام useMemo لتحليل وفلترة الإشعارات بذكاء
   const filteredNotifications: DisplayNotification[] = useMemo(() => {
     return notifications
-      .map((n) => ({
-        ...n,
-        type: parseNotificationType(n.message),
-        priority:
-          parseNotificationType(n.message) === "overdue" ? "high" : "medium",
-      }))
+      .map((n): DisplayNotification => {
+        const isOverdue = n.message.toLowerCase().includes("overdue");
+        let title = "Notification";
+        let targetUrl = "/notifications";
+        let type: DisplayNotification["type"] = "invoice_reminder";
+
+        if (n.dueId) {
+          title = n.dueId.name;
+          targetUrl = `/dues?highlight=${n.dueId._id}`;
+          type = "due_reminder";
+        } else if (n.invoiceId) {
+          // استخراج اسم البند من الرسالة كحل بديل
+          const match = n.message.match(/لبند "([^"]+)"/);
+          title = match ? match[1] : "Invoice Payment";
+          targetUrl = `/invoices/${n.invoiceId}`;
+          type = "invoice_reminder";
+        }
+
+        if (isOverdue) type = "overdue";
+
+        return {
+          ...n,
+          type,
+          priority: isOverdue ? "high" : "medium",
+          title,
+          targetUrl,
+        };
+      })
       .filter(
         (n) =>
           n.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          n.dueId.name.toLowerCase().includes(searchTerm.toLowerCase())
+          n.title.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [notifications, searchTerm]);
 
-  // 7. شاشات التحميل والتحقق من المستخدم
+  // ... (شاشات التحميل والتحقق من المستخدم تبقى كما هي)
   if (isAuthLoading) {
     return (
       <DashboardLayout>
@@ -304,16 +319,18 @@ export default function NotificationsPage() {
                                   !notification.isRead ? "text-primary" : ""
                                 }`}
                               >
-                                {notification.dueId.name}
+                                {notification.title}
                               </h4>
-                              <Badge
-                                variant={getPriorityColor(
-                                  notification.priority
-                                )}
+                              {/* <Badge
+                                variant={
+                                  notification.priority === "high"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
                                 className="text-xs"
                               >
                                 {notification.priority}
-                              </Badge>
+                              </Badge> */}
                               {!notification.isRead && (
                                 <div className="w-2 h-2 bg-primary rounded-full" />
                               )}
@@ -345,7 +362,7 @@ export default function NotificationsPage() {
                                 handleNotificationClick(notification);
                               }}
                             >
-                              <Eye className="mr-2 h-4 w-4" /> View Due Entry
+                              <Eye className="mr-2 h-4 w-4" /> View Entry
                             </DropdownMenuItem>
                             {!notification.isRead && (
                               <DropdownMenuItem
@@ -357,12 +374,12 @@ export default function NotificationsPage() {
                                 Read
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem
+                            {/* <DropdownMenuItem
                               className="text-destructive"
                               onClick={(e) => handleDelete(notification._id, e)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

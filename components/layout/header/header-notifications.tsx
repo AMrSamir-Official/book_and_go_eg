@@ -12,24 +12,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from "@/lib/auth";
 import { createApiClient } from "@/lib/axios";
-import { AlertCircle, Bell, CheckCircle, Eye, Loader2 } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle,
+  Eye,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-// واجهة تطابق البيانات القادمة من الـ API
+// 1. واجهة API مرنة تقبل كلا النوعين
 interface ApiNotification {
   _id: string;
   message: string;
   isRead: boolean;
   createdAt: string;
-  dueId: {
-    _id: string;
-    name: string;
-    amount: number;
-    currency: "USD" | "EGP";
-  };
+  dueId?: { _id: string; name: string };
+  invoiceId?: { _id: string; fileNumber: string }; // نفترض أن الـ API يرجع كائن
+  invoiceItemId?: string;
 }
 
 const apiClient = createApiClient();
@@ -38,82 +43,98 @@ export function HeaderNotifications() {
   const t = useTranslations("notifications");
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuthStore();
 
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // دالة لجلب البيانات من الخادم
+  // 2. تحديث دالة جلب البيانات لتشمل populate لكلا النوعين
   const fetchData = useCallback(async () => {
-    setIsLoading(true);
+    // لا نغير حالة التحميل في التحديثات الدورية
     try {
       const [notifResponse, countResponse] = await Promise.all([
-        apiClient.get("/notifications?limit=10"), // جلب آخر 10 إشعارات
+        apiClient.get("/notifications?limit=10&populate=dueId,invoiceId"),
         apiClient.get("/notifications/unread-count"),
       ]);
       setNotifications(notifResponse.data.data || []);
       setUnreadCount(countResponse.data.data.count || 0);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
-      // يمكنك إظهار Toast هنا إذا أردت
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // يتم إيقاف التحميل بعد أول جلب فقط
     }
   }, []);
 
-  // جلب البيانات عند تحميل المكون وإعداد تحديث تلقائي
   useEffect(() => {
-    fetchData(); // جلب البيانات عند التحميل لأول مرة
-    const interval = setInterval(fetchData, 30000); // تحديث كل 30 ثانية
-    return () => clearInterval(interval); // تنظيف المؤقت عند إغلاق المكون
-  }, [fetchData]);
-
-  // تحليل نوع الإشعار بناءً على الرسالة
-  const getNotificationType = (message: string) => {
-    if (message.toLowerCase().includes("overdue")) return "overdue";
-    return "payment_due";
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "payment_due":
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      case "overdue":
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Bell className="h-4 w-4 text-blue-500" />;
+    if (user?.role === "admin") {
+      fetchData();
+      const interval = setInterval(fetchData, 30000);
+      return () => clearInterval(interval);
     }
+  }, [fetchData, user]);
+
+  // 3. تحليل ذكي لنوع الإشعار، الأيقونة، والعنوان
+  const getNotificationDetails = (notification: ApiNotification) => {
+    let type: "due" | "invoice" | "overdue" = "due";
+    let title = "Notification";
+    let icon = <Bell className="h-4 w-4 text-blue-500" />;
+    let targetUrl = "/notifications";
+
+    if (notification.message.toLowerCase().includes("overdue")) {
+      type = "overdue";
+      icon = <AlertCircle className="h-4 w-4 text-red-500" />;
+    }
+
+    if (notification.dueId) {
+      type = "due";
+      title = notification.dueId.name;
+      icon = <AlertCircle className="h-4 w-4 text-orange-500" />;
+      targetUrl = `/dues?highlight=${notification.dueId._id}`;
+    } else if (notification.invoiceId) {
+      type = "invoice";
+      const match = notification.message.match(/لبند "([^"]+)"/);
+      title = match
+        ? match[1]
+        : `Invoice #${notification.invoiceId.fileNumber}`;
+      icon = <FileText className="h-4 w-4 text-green-500" />;
+      targetUrl = `/invoices/${notification.invoiceId._id}`;
+    }
+
+    return { type, title, icon, targetUrl };
   };
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (diffInSeconds < 60) return "Just now";
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60)
+    );
+    if (diffInMinutes < 1) return "Just now";
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) return `${diffInHours}h ago`;
     return date.toLocaleDateString();
   };
 
-  // دالة للضغط على إشعار معين
-  const handleNotificationClick = async (notification: ApiNotification) => {
+  // 4. دالة توجيه ذكية عند النقر
+  const handleNotificationClick = async (
+    notification: ApiNotification,
+    targetUrl: string
+  ) => {
     setIsOpen(false);
-    // إذا لم يكن مقروءًا، قم بتحديثه
     if (!notification.isRead) {
       try {
         await apiClient.post(`/notifications/${notification._id}/read`);
-        fetchData(); // أعد جلب البيانات لتحديث الحالة
+        fetchData();
       } catch (error) {
         console.error("Failed to mark notification as read", error);
       }
     }
-    router.push(`/dues?highlight=${notification.dueId._id}`);
+    router.push(targetUrl);
   };
 
-  // دالة لتحديد الكل كمقروء
   const markAllAsRead = async () => {
     try {
       await apiClient.post("/notifications/read-all");
@@ -121,7 +142,7 @@ export function HeaderNotifications() {
         title: "Success",
         description: "All notifications marked as read.",
       });
-      fetchData(); // أعد جلب البيانات
+      fetchData();
     } catch (error) {
       toast({
         title: "Error",
@@ -130,6 +151,10 @@ export function HeaderNotifications() {
       });
     }
   };
+
+  if (user?.role !== "admin") {
+    return null;
+  }
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -148,9 +173,7 @@ export function HeaderNotifications() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <div className="flex items-center justify-between p-2">
-          <DropdownMenuLabel className="p-0">
-            Due Notifications
-          </DropdownMenuLabel>
+          <DropdownMenuLabel className="p-0">Reminders</DropdownMenuLabel>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -176,18 +199,19 @@ export function HeaderNotifications() {
         ) : (
           <ScrollArea className="h-80">
             {notifications.map((notification) => {
-              const type = getNotificationType(notification.message);
+              const { title, icon, targetUrl } =
+                getNotificationDetails(notification);
               return (
                 <DropdownMenuItem
                   key={notification._id}
                   className={`flex items-start space-x-3 p-3 cursor-pointer ${
                     !notification.isRead ? "bg-muted/30" : ""
                   }`}
-                  onClick={() => handleNotificationClick(notification)}
+                  onClick={() =>
+                    handleNotificationClick(notification, targetUrl)
+                  }
                 >
-                  <div className="flex-shrink-0 mt-0.5">
-                    {getNotificationIcon(type)}
-                  </div>
+                  <div className="flex-shrink-0 mt-0.5">{icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p
@@ -195,7 +219,7 @@ export function HeaderNotifications() {
                           !notification.isRead ? "text-primary" : ""
                         }`}
                       >
-                        {notification.dueId.name}
+                        {title}
                       </p>
                       {!notification.isRead && (
                         <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 ml-2" />
@@ -204,15 +228,9 @@ export function HeaderNotifications() {
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {notification.message}
                     </p>
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs text-muted-foreground">
-                        {formatTime(notification.createdAt)}
-                      </p>
-                      <Badge variant="outline" className="text-xs">
-                        {notification.dueId.amount.toLocaleString()}{" "}
-                        {notification.dueId.currency}
-                      </Badge>
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {formatTime(notification.createdAt)}
+                    </p>
                   </div>
                 </DropdownMenuItem>
               );

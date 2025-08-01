@@ -14,7 +14,6 @@ import {
   FileText,
   LayoutDashboard,
   Plane,
-  Settings,
   Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -39,7 +38,7 @@ export const navigation = [
     name: "accounting",
     href: "/invoices",
     icon: FileText,
-    roles: ["admin", "user"],
+    roles: ["admin"],
   },
   {
     name: "notifications",
@@ -59,6 +58,12 @@ export const navigation = [
     roles: ["admin"],
     icon: DollarSign,
   },
+  {
+    name: "pending financials",
+    href: "/admin/pending-financials",
+    roles: ["admin"],
+    icon: DollarSign,
+  },
   // {
   //   name: "dues",
   //   href: "/dues",
@@ -71,12 +76,12 @@ export const navigation = [
   //   icon: Mail,
   //   roles: ["admin"],
   // },
-  {
-    name: "settings",
-    href: "/admin/settings",
-    icon: Settings,
-    roles: ["admin"],
-  },
+  // {
+  //   name: "settings",
+  //   href: "/admin/settings",
+  //   icon: Settings,
+  //   roles: ["admin"],
+  // },
 ];
 
 interface SidebarProps {

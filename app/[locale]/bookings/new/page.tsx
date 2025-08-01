@@ -1,5 +1,5 @@
 "use client";
-
+import { createBookingAction } from "@/actions/bookingActions";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useTransition } from "react";
 
 import {
   Table,
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useBookingFormStore } from "@/lib/store";
 // import { downloadPDF, shareToWhatsApp } from "@/lib/pdf-utils";
 import {
   ArrowLeft,
@@ -461,6 +461,7 @@ export default function NewBookingPage() {
   const t = useTranslations("bookings");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
@@ -574,19 +575,26 @@ export default function NewBookingPage() {
     append: appendGuide,
     remove: removeGuide,
   } = useFieldArray({ control, name: "guides" });
-  const { setBookingData } = useBookingFormStore();
   const onSubmit = (data: BookingFormData) => {
-    console.log("Booking Data saved :", data);
-    setBookingData(data);
-    toast({
-      title: "Booking has been created",
-      // description: "Please Complet the next Step ...",
-    });
+    startTransition(async () => {
+      const result = await createBookingAction(data);
 
-    // Redirect to accounting page for this booking
-    setTimeout(() => {
-      router.push(`/bookings/1`);
-    }, 1500);
+      if (result && !result.success) {
+        // في حالة حدوث خطأ، سيتم عرضه هنا
+        toast({
+          title: "Error Creating Booking",
+          description: result.message,
+          variant: "destructive",
+        });
+      } else {
+        // في حالة النجاح، سيتم عرض رسالة بسيطة قبل إعادة التوجيه
+        toast({
+          title: "Booking Created Successfully!",
+          description: "You are being redirected...",
+        });
+        // إعادة التوجيه تتم الآن من خلال الـ Server Action
+      }
+    });
   };
 
   return (
@@ -2022,9 +2030,20 @@ export default function NewBookingPage() {
 
             {/* Submit Button */}
             <div className="flex justify-center no-print">
-              <Button type="submit" size="lg" className="px-8">
-                <Save className="mr-2 h-5 w-5" />
-                Create Booking
+              <Button
+                type="submit"
+                size="lg"
+                className="px-8"
+                disabled={isPending}
+              >
+                {isPending ? (
+                  "Saving..."
+                ) : (
+                  <>
+                    <Save className="mr-2 h-5 w-5" />
+                    Create Booking
+                  </>
+                )}
               </Button>
             </div>
           </form>

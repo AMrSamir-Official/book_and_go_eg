@@ -1,32 +1,37 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useEffect } from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
-import { useAppStore } from "@/lib/store"
+import { useAppStore } from "@/lib/store";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { useEffect } from "react";
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { theme, locale, isHydrated, setHydrated } = useAppStore()
+export function ThemeProvider({
+  children,
+  ...props
+}: {
+  children: React.ReactNode;
+}) {
+  const { theme, locale, isHydrated, setHydrated } = useAppStore();
 
   useEffect(() => {
     // Ensure hydration is complete
     if (!isHydrated) {
-      setHydrated()
+      setHydrated();
     }
-  }, [isHydrated, setHydrated])
+  }, [isHydrated, setHydrated]);
 
   useEffect(() => {
     // Apply locale settings
     if (typeof window !== "undefined") {
-      document.documentElement.dir = locale === "ar" ? "rtl" : "ltr"
-      document.documentElement.lang = locale
+      document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+      document.documentElement.lang = locale;
     }
-  }, [locale])
+  }, [locale]);
 
   // Prevent hydration mismatch
   if (!isHydrated) {
-    return <div className="min-h-screen bg-background">{children}</div>
+    return <div className="min-h-screen bg-background">{children}</div>;
   }
 
   return (
@@ -39,5 +44,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
     </NextThemesProvider>
-  )
+  );
 }

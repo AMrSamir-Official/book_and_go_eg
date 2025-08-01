@@ -76,6 +76,22 @@
     "recentInvoices": "Recent Invoices",
     "latestInvoiceActivity": "Latest invoice activity"
   },
+  "financials": {
+    "pendingItemsTitle": "Pending Financial Items",
+    "pendingItemsDescription": "A detailed list of all individual pending expenses and incomes across all invoices.",
+    "searchPlaceholder": "Search by invoice or file number...",
+    "filterByType": "Filter by type",
+    "allTypes": "All Types",
+    "invoiceNumber": "Invoice No.",
+    "fileNumber": "File No.",
+    "itemType": "Item Type",
+    "itemName": "Item Name / Details",
+    "paymentDate": "Payment Date",
+    "amount": "Amount",
+    "actions": "Actions",
+    "markPaid": "Mark as Paid",
+    "noPendingItems": "No pending financial items found."
+  },
   "bookings": {
     "title": "Bookings",
     "description": "Manage all your travel bookings",
@@ -85,6 +101,8 @@
     "searchBookings": "Search bookings...",
     "fileNumber": "File Number",
     "supplier": "Supplier",
+    "vendor": "Vendor",
+
     "pax": "Pax",
     "dates": "Dates",
     "nationality": "Nationality",
@@ -94,6 +112,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "createInvoice": "Create Accounting",
+    "editInvoice": "Edit Accounting",
     "print": "Print",
     "sendWhatsApp": "Send to WhatsApp",
     "basicInfo": "Basic Information",

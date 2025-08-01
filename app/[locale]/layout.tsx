@@ -53,6 +53,7 @@ export default async function RootLayout({
             defaultTheme={savedTheme}
             enableSystem
             disableTransitionOnChange
+            {...({} as any)}
           >
             {/* 2. تمرير المستخدم والتوكن معًا */}
             <AuthProvider user={user} token={token}>

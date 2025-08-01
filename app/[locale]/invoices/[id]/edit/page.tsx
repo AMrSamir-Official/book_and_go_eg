@@ -1,17 +1,18 @@
-// src/app/[locale]/invoices/[id]/page.tsx
+// src/app/[locale]/invoices/[id]/edit/page.tsx
 
-import { getInvoiceByIdAction } from "@/actions/invoiceActions";
+import { getInvoiceByIdAction } from "@/actions/invoiceActions"; // استيراد دالة جلب الفاتورة
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { InvoiceViewPageClient } from "./invoice-view-page-client";
+import { EditInvoicePageClient } from "./edit-invoice-client"; // سنقوم بتغيير اسم الملف العميل
 
-export default async function ViewInvoicePage({
+export default async function EditInvoicePage({
   params,
 }: {
   params: { id: string };
 }) {
+  // جلب بيانات الفاتورة الحالية باستخدام ID من الرابط
   const result = await getInvoiceByIdAction(params.id);
 
   if (!result.success || !result.data) {
@@ -20,7 +21,7 @@ export default async function ViewInvoicePage({
         <div className="text-center p-8">
           <h2 className="text-2xl font-bold mb-2 text-destructive">Error</h2>
           <p className="text-muted-foreground">
-            {result.message || "Invoice not found."}
+            {result.message || "Could not find the invoice to edit."}
           </p>
           <Button asChild className="mt-4">
             <Link href="/invoices">
@@ -33,5 +34,6 @@ export default async function ViewInvoicePage({
     );
   }
 
-  return <InvoiceViewPageClient invoice={result.data} />;
+  // تمرير بيانات الفاتورة الكاملة إلى المكون العميل
+  return <EditInvoicePageClient invoice={result.data} />;
 }

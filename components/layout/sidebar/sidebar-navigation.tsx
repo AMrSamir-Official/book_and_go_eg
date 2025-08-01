@@ -1,5 +1,6 @@
 "use client";
 
+import Loading from "@/app/[locale]/admin/loading";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -64,8 +65,10 @@ const navigationItems = [
 export function SidebarNavigation() {
   const t = useTranslations("navigation");
   const pathname = usePathname();
-  const { user } = useAuthStore();
-
+  const { user, isLoading } = useAuthStore();
+  if (isLoading) {
+    <Loading />;
+  }
   return (
     <SidebarGroup>
       <SidebarGroupContent>

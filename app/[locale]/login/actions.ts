@@ -1,7 +1,6 @@
 "use server"; // <-- هذا السطر يخبر Next.js أن الكود في هذا الملف يعمل على الخادم فقط
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 // تأكد من وضع رابط الـ Backend API في متغيرات البيئة في ملف .env.local
 // مثال: NEXT_PUBLIC_API_URL=http://localhost:5000/api
@@ -9,7 +8,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // يمكن استخدام interface لتحديد شكل الحالة التي يتم إرجاعها
 interface ActionState {
-  message: string;
+  message?: string;
+  success?: boolean;
+  redirectTo?: string;
 }
 
 export async function loginAction(
@@ -56,5 +57,8 @@ export async function loginAction(
   }
 
   // 5. إذا نجحت كل الخطوات، قم بإعادة توجيه المستخدم إلى لوحة التحكم
-  redirect(`/${locale}/dashboard`);
+  return {
+    success: true,
+    redirectTo: `/${locale}/dashboard`,
+  };
 }

@@ -1,5 +1,4 @@
 "use client";
-
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,18 +12,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockBookingData } from "@/lib/mock-booking"; // Correct path
+// import {
+//   downloadBookingPDF,
+//   downloadGuidePDF,
+//   downloadMeetingAssistPDF,
+//   shareBookingPDF,
+//   shareGuidePDF,
+//   shareMeetingAssistPDF,
+// } from "@/lib/podf-utils/booking"; // Import all new functions
 import {
+  downloadAswanLuxorTransferPDF,
   downloadBookingPDF,
+  // --- ADD THESE NEW IMPORTS ---
+  downloadCairoTransferPDF,
   downloadGuidePDF,
   downloadMeetingAssistPDF,
+  shareAswanLuxorTransferPDF,
   shareBookingPDF,
+  shareCairoTransferPDF,
   shareGuidePDF,
   shareMeetingAssistPDF,
-} from "@/lib/podf-utils/booking"; // Import all new functions
+} from "@/lib/podf-utils/booking";
 import {
   ArrowLeft,
   Car,
+  FileDown,
   Hotel,
   MapPin,
   Plane,
@@ -35,7 +47,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Key } from "react";
 // import { BookingData } from "./print/booking-print-view"; // Assuming you move the interface to a types file
 interface BookingData {
   id: string;
@@ -128,6 +140,7 @@ interface BookingData {
     nationality: string;
   };
   guides: Array<{
+    _id: Key | null | undefined;
     id: string;
     city: string;
     guideName: string;
@@ -144,33 +157,51 @@ interface BookingData {
     }>;
   }>;
 }
-export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
+export function BookingViewPageClient({
+  booking,
+  errorMessage,
+}: {
+  booking: BookingData | null;
+  errorMessage?: string | null;
+}) {
   const t = useTranslations("common");
   const router = useRouter();
-  const [booking, setBooking] = useState<BookingData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- ADD THESE NEW HANDLERS ---
+  const handlePrintCairoTransfer = () => {
+    if (booking) downloadCairoTransferPDF(booking);
+  };
 
-  useEffect(() => {
-    const loadBooking = () => {
-      setIsLoading(true);
-      const formattedData: BookingData = {
-        ...mockBookingData,
-        id: bookingId,
-        status: "confirmed",
-        createdAt: new Date().toISOString(),
-        guides: mockBookingData.guides.map((guide, index) => ({
-          ...guide,
-          id: `guide-${index}`,
-          paxAdults: Number(guide.paxAdults),
-          paxChildren: Number(guide.paxChildren),
-        })),
-      };
-      setBooking(formattedData);
-      setIsLoading(false);
-    };
-    loadBooking();
-  }, [bookingId]);
+  const handleShareCairoTransfer = async () => {
+    if (booking) {
+      try {
+        await shareCairoTransferPDF(
+          booking,
+          `Cairo Transfer order for ${booking.fileNumber}`
+        );
+      } catch (error) {
+        console.error(error);
+        alert((error as Error).message);
+      }
+    }
+  };
 
+  const handlePrintAswanLuxorTransfer = () => {
+    if (booking) downloadAswanLuxorTransferPDF(booking);
+  };
+
+  const handleShareAswanLuxorTransfer = async () => {
+    if (booking) {
+      try {
+        await shareAswanLuxorTransferPDF(
+          booking,
+          `Aswan/Luxor Transfer order for ${booking.fileNumber}`
+        );
+      } catch (error) {
+        console.error(error);
+        alert((error as Error).message);
+      }
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -188,6 +219,7 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
   const handlePrint = () => {
     if (booking) downloadBookingPDF(booking);
   };
+  // --- ADD THESE NEW HANDLERS ---
 
   const handleShare = async () => {
     if (booking) {
@@ -242,18 +274,18 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
     }
   };
 
-  if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading booking details...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <DashboardLayout>
+  //       <div className="flex items-center justify-center min-h-[400px]">
+  //         <div className="text-center">
+  //           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+  //           <p className="text-muted-foreground">Loading booking details...</p>
+  //         </div>
+  //       </div>
+  //     </DashboardLayout>
+  //   );
+  // }
 
   if (!booking) {
     return (
@@ -261,7 +293,8 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold mb-4">Booking Not Found</h2>
           <p className="text-muted-foreground mb-6">
-            Could not load booking data.
+            {errorMessage ||
+              "Could not load booking data. It may have been deleted or you may not have permission to view it."}
           </p>
           <Button onClick={() => router.push("/bookings")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -297,8 +330,8 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
               Share
             </Button>
             <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print All
+              <FileDown className="mr-2 h-4 w-4" />
+              Download PDF
             </Button>
           </div>
         </div>
@@ -453,7 +486,7 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {booking.guides.map((guide, index) => (
                 <div
-                  key={guide.id}
+                  key={guide._id}
                   className="border rounded-lg p-4 flex flex-col"
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -741,6 +774,7 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
         </Card>
 
         {/* --- Transportation --- */}
+        {/* --- Transportation --- */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -748,8 +782,27 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
+            {/* --- CAIRO TRANSFER SECTION --- */}
             <div>
-              <h3 className="font-bold text-xl mb-4">Cairo Transfer Order</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-xl">Cairo Transfer Order</h3>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleShareCairoTransfer}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePrintCairoTransfer}
+                  >
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Pax Count</p>
@@ -809,10 +862,29 @@ export function BookingViewPageClient({ bookingId }: { bookingId: string }) {
               </div>
             </div>
             <Separator />
+            {/* --- ASWAN/LUXOR TRANSFER SECTION --- */}
             <div>
-              <h3 className="font-bold text-xl mb-4">
-                Aswan/Luxor/Hurghada Transfer
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-xl">
+                  Aswan & Luxor & Hurghada Transfer
+                </h3>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleShareAswanLuxorTransfer}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePrintAswanLuxorTransfer}
+                  >
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Pax Count</p>

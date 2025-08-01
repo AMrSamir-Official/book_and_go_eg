@@ -83,7 +83,6 @@ interface ApiDue {
 
 // Type for display, including the 'overdue' status
 interface DisplayDue extends ApiDue {
-  id: string;
   status: "Pending" | "Paid" | "overdue";
 }
 

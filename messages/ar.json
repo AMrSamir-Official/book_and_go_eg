@@ -6,9 +6,10 @@
     "notifications": "الإشعارات",
     "settings": "الإعدادات",
     "emails": "emails",
-    "users": "users",
+    "users": "المستخدمين",
     "accounting": "المحاسبة",
-    "dues": "المستحقات والتسويات"
+    "dues": "المستحقات والتسويات",
+    "pending financials": "الاموال المعلقة"
   },
   "common": {
     "dashboard": "لوحة التحكم",
@@ -84,6 +85,7 @@
     "searchBookings": "البحث في الحجوزات...",
     "fileNumber": "رقم الملف",
     "supplier": "المورد",
+    "vendor": "بائع",
     "pax": "عدد الأشخاص",
     "dates": "التواريخ",
     "nationality": "الجنسية",
@@ -93,6 +95,7 @@
     "edit": "تعديل",
     "delete": "حذف",
     "createInvoice": "إنشاء فاتورة",
+    "editInvoice": "تعديل فاتورة",
     "print": "طباعة",
     "sendWhatsApp": "إرسال واتساب",
     "basicInfo": "المعلومات الأساسية",
@@ -134,6 +137,22 @@
     "bookingSummary": "ملخص الحجز",
     "printBooking": "طباعة الحجز",
     "shareWhatsApp": "مشاركة عبر واتساب"
+  },
+  "financials": {
+    "pendingItemsTitle": "البنود المالية المعلقة",
+    "pendingItemsDescription": "قائمة تفصيلية بكل المصروفات والإيرادات المعلقة في جميع الفواتير.",
+    "searchPlaceholder": "ابحث برقم الفاتورة أو الملف...",
+    "filterByType": "تصفية حسب النوع",
+    "allTypes": "كل الأنواع",
+    "invoiceNumber": "رقم الفاتورة",
+    "fileNumber": "رقم الملف",
+    "itemType": "نوع البند",
+    "itemName": "اسم البند / التفاصيل",
+    "paymentDate": "تاريخ الدفع",
+    "amount": "المبلغ",
+    "actions": "الإجراءات",
+    "markPaid": "تحديد كمدفوع",
+    "noPendingItems": "لا توجد بنود مالية معلقة."
   },
   "invoices": {
     "title": "الفواتير",

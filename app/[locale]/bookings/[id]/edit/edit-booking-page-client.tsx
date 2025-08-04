@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { BookingTypes } from "@/types/bookingData";
 import {
   ArrowLeft,
   Hotel,
@@ -35,9 +36,8 @@ import {
   Save,
   Users,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import {
   Control,
   Controller,
@@ -45,171 +45,38 @@ import {
   UseFieldArrayRemove,
   useForm,
   UseFormRegister,
-  UseFormSetValue,
 } from "react-hook-form";
 
-// --- Data Lists ---
-const vendors = ["Rmit", "Tanvi", "Dixita", "Viator", "SanUSA", "Gurave"];
-const nationalities = ["USA", "INDIAN", "British", "Spanish", "Italy"];
-const internationalAirlines = [
-  "Egyptair",
-  "Qatarways",
-  "Emirates",
-  "Etihad",
-  "Oman air ways",
-  "Turkish",
-  "Airfrance",
-  "Swissair",
-  "Lufthansa",
-  "British airline",
-];
-const domesticAirlines = ["Egyptair", "Aircairo", "Nile air", "Nesma airline"];
-const flightCities = ["Cairo", "Aswan", "Luxor", "Hurghada", "Sharm"];
-const vanTypes = ["Lemosine 2 Pax", "H1 4 pAX", "Hice 7 Pax", "Coster 11 Pax"];
-const hotelsByCity = {
-  Cairo: [
-    "Ramses Hilton Cairo",
-    "Hilton Nile Tower Cairo",
-    "Radisson blu Cairo",
-    "Le passage airport Hotel Cairo",
-    "Pyramids Park Hotel Cairo",
-  ],
-  Hurghada: ["Azur Pharaoh resort", "serinty beach", "Serenity fun city"],
-  Aswan: ["Pyramisa island", "City Max"],
-  Alexandria: ["Hilton Alexandria"],
-  Sharm: ["Rotana sharm"],
-};
-const citiesWithHotels = Object.keys(hotelsByCity);
-const cities = [
-  "Cairo",
-  "Giza",
-  "Alexandria",
-  "Luxor",
-  "Aswan",
-  "Hurghada",
-  "Sharm El Sheikh",
-  "Dahab",
-  "Marsa Alam",
-  "Abu Simbel",
-  "Edfu",
-  "Kom Ombo",
-  "Esna",
-];
+// --- Interfaces ---
 
-// --- Type Interfaces ---
-export interface BookingFormData {
-  _id: string;
-  fileNumber: string;
-  vendor: string;
-  paxCount: number;
-  arrivalDate: string;
-  departureDate: string;
-  numberOfNights: number;
-  nationality: string;
-  arrivalFlight: {
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  };
-  departureFlight: {
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  };
-  domesticFlights: Array<{
-    departure: string;
-    arrival: string;
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  }>;
-  hotels: Array<{
-    city: string;
-    name: string;
-    checkIn: string;
-    checkOut: string;
-    status: "pending" | "confirmed";
-  }>;
-  nileCruise: {
-    name: string;
-    checkIn: string;
-    checkOut: string;
-    status: "pending" | "confirmed";
-  };
-  include: string;
-  exclude: string;
-  specialNotice: string;
-  dailyProgram: Array<{
-    day: number;
-    date: string;
-    city: string;
-    details: string;
-  }>;
-  cairoTransfer: {
-    paxCount: number;
-    vanType: string;
-    driver: { name: string; contact: string; description: string };
-    days: Array<{
-      day: number;
-      date: string;
-      city: string;
-      description: string;
-    }>;
-    sendBy: string[];
-  };
-  aswanLuxorTransfer: {
-    paxCount: number;
-    vanType: string;
-    days: Array<{
-      day: number;
-      date: string;
-      city: string;
-      description: string;
-    }>;
-    sendBy: string[];
-  };
-  meetingAssist: {
-    paxCount: number;
-    name: string;
-    driver: { name: string; contact: string };
-    arrivalFlight: {
-      date: string;
-      time: string;
-      airlineName: string;
-      flightNo: string;
-    };
-    nationality: string;
-  };
-  guides: Array<{
-    city: string;
-    guideName: string;
-    guestNationality: string;
-    paxAdults: number;
-    paxChildren: number;
-    pickupHotelLocation: string;
-    days: Array<{
-      day: number;
-      date: string;
-      time: string;
-      include: string;
-      exclude: string;
-    }>;
-  }>;
+interface DataItem {
+  id: string;
+  name: string;
+  [key: string]: any;
+}
+
+interface BookingDataProps {
+  cities: DataItem[];
+  hotels: DataItem[];
+  vans: DataItem[];
+  guides: DataItem[];
+  nationalities: DataItem[];
+  nileCruises: DataItem[];
+  vendors: DataItem[];
+  domesticAirlines: DataItem[];
+  internationalAirlines: DataItem[];
 }
 
 interface GuideItemProps {
   guideItem: { id: string };
   guideIndex: number;
-  control: Control<BookingFormData>;
-  register: UseFormRegister<BookingFormData>;
-  setValue: UseFormSetValue<BookingFormData>;
+  control: Control<BookingTypes>;
+  register: UseFormRegister<BookingTypes>;
   removeGuide: UseFieldArrayRemove;
   guideFields: { id: string }[];
-  cities: string[];
-  nationalities: string[];
+  cities: DataItem[];
+  guides: DataItem[];
+  nationalities: DataItem[];
 }
 
 // --- GuideItem Sub-Component ---
@@ -221,6 +88,7 @@ function GuideItem({
   removeGuide,
   guideFields,
   cities,
+  guides,
   nationalities,
 }: GuideItemProps) {
   const {
@@ -257,8 +125,8 @@ function GuideItem({
                 </SelectTrigger>
                 <SelectContent>
                   {cities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
+                    <SelectItem key={city.id} value={city.name}>
+                      {city.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -268,10 +136,23 @@ function GuideItem({
         </div>
         <div>
           <Label className="text-base font-medium">Guide Name:</Label>
-          <Input
-            {...register(`guides.${guideIndex}.guideName`)}
-            placeholder="Guide name"
-            className="mt-1"
+          <Controller
+            name={`guides.${guideIndex}.guideName`}
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select guide" />
+                </SelectTrigger>
+                <SelectContent>
+                  {guides.map((guide) => (
+                    <SelectItem key={guide.id} value={guide.name}>
+                      {guide.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           />
         </div>
       </div>
@@ -288,8 +169,8 @@ function GuideItem({
                 </SelectTrigger>
                 <SelectContent>
                   {nationalities.map((nat) => (
-                    <SelectItem key={nat} value={nat}>
-                      {nat}
+                    <SelectItem key={nat.id} value={nat.name}>
+                      {nat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -437,13 +318,50 @@ function GuideItem({
 // --- Main Edit Page Component ---
 export function EditBookingPageClient({
   booking,
+  initialData,
 }: {
-  booking: BookingFormData;
+  booking: BookingTypes;
+  initialData: BookingDataProps;
 }) {
-  const t = useTranslations("bookings");
+  console.log("booking :", booking);
+  console.log("initialData :", initialData);
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+
+  // --- Extract data from props ---
+  const {
+    cities = [],
+    hotels = [],
+    vans = [],
+    guides = [],
+    nationalities = [],
+    nileCruises = [],
+    vendors = [],
+    domesticAirlines = [],
+    internationalAirlines = [],
+  } = initialData || {};
+
+  // --- Process hotel data to group by city ---
+  const hotelsByCity = useMemo(() => {
+    if (!hotels || hotels.length === 0) return {};
+    return hotels.reduce(
+      (acc: { [key: string]: DataItem[] }, hotel: DataItem) => {
+        const cityName = hotel.city?.name;
+        if (!acc[cityName]) {
+          acc[cityName] = [];
+        }
+        acc[cityName].push(hotel);
+        return acc;
+      },
+      {}
+    );
+  }, [hotels]);
+
+  const citiesWithHotels = useMemo(
+    () => Object.keys(hotelsByCity),
+    [hotelsByCity]
+  );
 
   const {
     register,
@@ -452,7 +370,7 @@ export function EditBookingPageClient({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<BookingFormData>({
+  } = useForm<BookingTypes>({
     defaultValues: booking,
   });
 
@@ -487,17 +405,20 @@ export function EditBookingPageClient({
     remove: removeGuide,
   } = useFieldArray({ control, name: "guides" });
 
-  const onSubmit = (data: BookingFormData) => {
+  const onSubmit = (data: BookingTypes) => {
     startTransition(async () => {
-      const result = await updateBookingAction(booking._id, data);
-      if (result && !result.success) {
-        toast({
-          title: "Error Updating Booking",
-          description: result.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({ title: "Booking Updated Successfully!" });
+      if (booking.id) {
+        const result = await updateBookingAction(booking.id, data);
+        if (result && !result.success) {
+          toast({
+            title: "Error Updating Booking",
+            description: result.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Booking Updated Successfully!" });
+          router.push(`/bookings/${booking.id}`);
+        }
       }
     });
   };
@@ -518,11 +439,11 @@ export function EditBookingPageClient({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* 1. Basic Booking Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
-                <Users className="mr-2 h-6 w-6" />
-                1. Basic Booking Information
+                <Users className="mr-2 h-6 w-6" /> 1. Basic Booking Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -531,9 +452,12 @@ export function EditBookingPageClient({
                   <Label htmlFor="fileNumber">File Number:</Label>
                   <Input
                     id="fileNumber"
-                    {...register("fileNumber", {
-                      required: "File number is required",
-                    })}
+                    {...register(
+                      "fileNumber"
+                      //   , {
+                      //   required: "File number is required",
+                      // }
+                    )}
                     className="mt-1"
                   />
                   {errors.fileNumber && (
@@ -557,8 +481,8 @@ export function EditBookingPageClient({
                         </SelectTrigger>
                         <SelectContent>
                           {vendors.map((v) => (
-                            <SelectItem key={v} value={v}>
-                              {v}
+                            <SelectItem key={v.id || v._id} value={v.name}>
+                              {v.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -599,13 +523,42 @@ export function EditBookingPageClient({
                   />
                 </div>
                 <div>
+                  <Label htmlFor="childCount">Child:</Label>
+                  <Controller
+                    name="childCount"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={(value) =>
+                          field.onChange(parseInt(value, 10))
+                        }
+                        value={field.value?.toString()}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select child count" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[0, 1, 2, 3, 4].map((num) => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="arrivalDate">Arrival Date:</Label>
                   <Input
                     id="arrivalDate"
                     type="date"
-                    {...register("arrivalDate", {
-                      required: "Arrival date is required",
-                    })}
+                    {...register(
+                      "arrivalDate"
+                      //   , {
+                      //   required: "Arrival date is required",
+                      // }
+                    )}
                     className="mt-1"
                   />
                 </div>
@@ -614,9 +567,12 @@ export function EditBookingPageClient({
                   <Input
                     id="departureDate"
                     type="date"
-                    {...register("departureDate", {
-                      required: "Departure date is required",
-                    })}
+                    {...register(
+                      "departureDate"
+                      //   , {
+                      //   required: "Departure date is required",
+                      // }
+                    )}
                     className="mt-1"
                   />
                 </div>
@@ -663,8 +619,8 @@ export function EditBookingPageClient({
                         </SelectTrigger>
                         <SelectContent>
                           {nationalities.map((nat) => (
-                            <SelectItem key={nat} value={nat}>
-                              {nat}
+                            <SelectItem key={nat.id} value={nat.name}>
+                              {nat.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -677,7 +633,9 @@ export function EditBookingPageClient({
               <h3 className="text-lg font-semibold pt-4">Flight Details</h3>
               <div className="space-y-4">
                 <div>
-                  <Label>Arrival Flight Details:</Label>
+                  <Label className="text-base font-medium">
+                    Arrival Flight Details:
+                  </Label>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
                     <div>
                       <Label className="text-sm">Date</Label>
@@ -701,9 +659,12 @@ export function EditBookingPageClient({
                               <SelectValue placeholder="Airline" />
                             </SelectTrigger>
                             <SelectContent>
-                              {internationalAirlines.map((name) => (
-                                <SelectItem key={name} value={name}>
-                                  {name}
+                              {internationalAirlines.map((airline) => (
+                                <SelectItem
+                                  key={airline.id}
+                                  value={airline.name}
+                                >
+                                  {airline.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -720,8 +681,11 @@ export function EditBookingPageClient({
                     </div>
                   </div>
                 </div>
+
                 <div>
-                  <Label>Departure Flight Details:</Label>
+                  <Label className="text-base font-medium">
+                    Departure Flight Details:
+                  </Label>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
                     <div>
                       <Label className="text-sm">Date</Label>
@@ -751,9 +715,12 @@ export function EditBookingPageClient({
                               <SelectValue placeholder="Airline" />
                             </SelectTrigger>
                             <SelectContent>
-                              {internationalAirlines.map((name) => (
-                                <SelectItem key={name} value={name}>
-                                  {name}
+                              {internationalAirlines.map((airline) => (
+                                <SelectItem
+                                  key={airline.id}
+                                  value={airline.name}
+                                >
+                                  {airline.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -771,9 +738,12 @@ export function EditBookingPageClient({
                   </div>
                 </div>
               </div>
-              <div className="space-y-4 pt-4">
+
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label>Domestic Flight Details</Label>
+                  <Label className="text-base font-medium">
+                    Domestic Flight Details
+                  </Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -824,9 +794,9 @@ export function EditBookingPageClient({
                                 <SelectValue placeholder="Select city" />
                               </SelectTrigger>
                               <SelectContent>
-                                {flightCities.map((city) => (
-                                  <SelectItem key={city} value={city}>
-                                    {city}
+                                {cities.map((city) => (
+                                  <SelectItem key={city.id} value={city.name}>
+                                    {city.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -848,9 +818,9 @@ export function EditBookingPageClient({
                                 <SelectValue placeholder="Select city" />
                               </SelectTrigger>
                               <SelectContent>
-                                {flightCities.map((city) => (
-                                  <SelectItem key={city} value={city}>
-                                    {city}
+                                {cities.map((city) => (
+                                  <SelectItem key={city.id} value={city.name}>
+                                    {city.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -872,9 +842,12 @@ export function EditBookingPageClient({
                                 <SelectValue placeholder="Airline" />
                               </SelectTrigger>
                               <SelectContent>
-                                {domesticAirlines.map((name) => (
-                                  <SelectItem key={name} value={name}>
-                                    {name}
+                                {domesticAirlines.map((airline) => (
+                                  <SelectItem
+                                    key={airline.id}
+                                    value={airline.name}
+                                  >
+                                    {airline.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -910,11 +883,11 @@ export function EditBookingPageClient({
             </CardContent>
           </Card>
 
+          {/* 2. Accommodation */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
-                <Hotel className="mr-2 h-6 w-6" />
-                2. Accommodation
+                <Hotel className="mr-2 h-6 w-6" /> 2. Accommodation
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -939,9 +912,7 @@ export function EditBookingPageClient({
                   </Button>
                 </div>
                 {hotelFields.map((field, index) => {
-                  const selectedCity = watch(
-                    `hotels.${index}.city`
-                  ) as keyof typeof hotelsByCity;
+                  const selectedCity = watch(`hotels.${index}.city`);
                   return (
                     <div key={field.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-4">
@@ -1002,16 +973,14 @@ export function EditBookingPageClient({
                                 <SelectContent>
                                   {selectedCity &&
                                   hotelsByCity[selectedCity] ? (
-                                    hotelsByCity[selectedCity].map(
-                                      (hotelName: string) => (
-                                        <SelectItem
-                                          key={hotelName}
-                                          value={hotelName}
-                                        >
-                                          {hotelName}
-                                        </SelectItem>
-                                      )
-                                    )
+                                    hotelsByCity[selectedCity].map((hotel) => (
+                                      <SelectItem
+                                        key={hotel.id}
+                                        value={hotel.name}
+                                      >
+                                        {hotel.name}
+                                      </SelectItem>
+                                    ))
                                   ) : (
                                     <SelectItem value="null" disabled>
                                       No city selected
@@ -1074,6 +1043,7 @@ export function EditBookingPageClient({
                   );
                 })}
               </div>
+
               <Separator />
               <div>
                 <Label className="text-base font-medium">Nile Cruise</Label>
@@ -1081,9 +1051,26 @@ export function EditBookingPageClient({
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <Label className="text-sm">Nile Cruise Name</Label>
-                      <Input
-                        {...register("nileCruise.name")}
-                        placeholder="Cruise name"
+                      <Controller
+                        name="nileCruise.name"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Cruise" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {nileCruises.map((cruise) => (
+                                <SelectItem key={cruise.id} value={cruise.name}>
+                                  {cruise.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       />
                     </div>
                     <div>
@@ -1103,23 +1090,24 @@ export function EditBookingPageClient({
                           <RadioGroup
                             onValueChange={field.onChange}
                             value={field.value}
-                            className="flex items-center space-x-4 pt-2"
                           >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="pending"
-                                id="cruise-pending"
-                              />
-                              <Label htmlFor="cruise-pending">Pending</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="confirmed"
-                                id="cruise-confirmed"
-                              />
-                              <Label htmlFor="cruise-confirmed">
-                                Confirmed
-                              </Label>
+                            <div className="flex items-center space-x-4 flex-wrap pt-2">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id="cruise-pending"
+                                />
+                                <Label htmlFor="cruise-pending">Pending</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="confirmed"
+                                  id="cruise-confirmed"
+                                />
+                                <Label htmlFor="cruise-confirmed">
+                                  Confirmed
+                                </Label>
+                              </div>
                             </div>
                           </RadioGroup>
                         )}
@@ -1131,6 +1119,7 @@ export function EditBookingPageClient({
             </CardContent>
           </Card>
 
+          {/* 3. Itinerary & Cities */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
@@ -1141,31 +1130,40 @@ export function EditBookingPageClient({
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="include">Include:</Label>
+                  <Label htmlFor="include" className="text-base font-medium">
+                    Include:
+                  </Label>
                   <Textarea
                     id="include"
                     {...register("include")}
-                    placeholder="What's included..."
+                    placeholder="What's included in the package..."
                     rows={3}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="exclude">Exclude:</Label>
+                  <Label htmlFor="exclude" className="text-base font-medium">
+                    Exclude:
+                  </Label>
                   <Textarea
                     id="exclude"
                     {...register("exclude")}
-                    placeholder="What's excluded..."
+                    placeholder="What's excluded from the package..."
                     rows={3}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="specialNotice">Special Notice:</Label>
+                  <Label
+                    htmlFor="specialNotice"
+                    className="text-base font-medium"
+                  >
+                    Special Notice:
+                  </Label>
                   <Textarea
                     id="specialNotice"
                     {...register("specialNotice")}
-                    placeholder="Any special notices..."
+                    placeholder="Any special notices or requirements..."
                     rows={3}
                     className="mt-1"
                   />
@@ -1174,7 +1172,7 @@ export function EditBookingPageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label>Daily Program</Label>
+                  <Label className="text-base font-medium">Daily Program</Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -1199,7 +1197,7 @@ export function EditBookingPageClient({
                         <TableHead>Date</TableHead>
                         <TableHead>City</TableHead>
                         <TableHead>Details</TableHead>
-                        <TableHead></TableHead>
+                        <TableHead />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1234,8 +1232,11 @@ export function EditBookingPageClient({
                                   </SelectTrigger>
                                   <SelectContent>
                                     {cities.map((city) => (
-                                      <SelectItem key={city} value={city}>
-                                        {city}
+                                      <SelectItem
+                                        key={city.id}
+                                        value={city.name}
+                                      >
+                                        {city.name}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -1246,7 +1247,7 @@ export function EditBookingPageClient({
                           <TableCell>
                             <Textarea
                               {...register(`dailyProgram.${index}.details`)}
-                              placeholder="Day activities..."
+                              placeholder="Day activities and details..."
                               rows={2}
                             />
                           </TableCell>
@@ -1271,6 +1272,7 @@ export function EditBookingPageClient({
             </CardContent>
           </Card>
 
+          {/* 4. Transportation */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
@@ -1283,11 +1285,15 @@ export function EditBookingPageClient({
                 <h4 className="text-lg font-semibold">Cairo Transfer Order</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>No. of Pax:</Label>
-                    <Input value={watch("paxCount")} readOnly />
+                    <Label className="text-base font-medium">No. of Pax:</Label>
+                    <Input
+                      value={watch("paxCount")}
+                      readOnly
+                      className="mt-1 "
+                    />
                   </div>
                   <div>
-                    <Label>Van Type:</Label>
+                    <Label className="text-base font-medium">Van Type:</Label>
                     <Controller
                       name="cairoTransfer.vanType"
                       control={control}
@@ -1296,13 +1302,13 @@ export function EditBookingPageClient({
                           onValueChange={field.onChange}
                           value={field.value}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="mt-1">
                             <SelectValue placeholder="Select van type" />
                           </SelectTrigger>
                           <SelectContent>
-                            {vanTypes.map((van) => (
-                              <SelectItem key={van} value={van}>
-                                {van}
+                            {vans.map((van) => (
+                              <SelectItem key={van.id} value={van.name}>
+                                {van.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1313,21 +1319,38 @@ export function EditBookingPageClient({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Driver Name:</Label>
-                    <Input {...register("cairoTransfer.driver.name")} />
+                    <Label className="text-base font-medium">
+                      Driver name:
+                    </Label>
+                    <Input
+                      {...register("cairoTransfer.driver.name")}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
-                    <Label>Driver Contact:</Label>
-                    <Input {...register("cairoTransfer.driver.contact")} />
+                    <Label className="text-base font-medium">
+                      Driver Contact:
+                    </Label>
+                    <Input
+                      {...register("cairoTransfer.driver.contact")}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
-                    <Label>Driver Description:</Label>
-                    <Input {...register("cairoTransfer.driver.description")} />
+                    <Label className="text-base font-medium">
+                      Driver Description:
+                    </Label>
+                    <Input
+                      {...register("cairoTransfer.driver.description")}
+                      className="mt-1"
+                    />
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label>Daily Schedule</Label>
+                    <Label className="text-base font-medium">
+                      Daily Schedule
+                    </Label>
                     <Button
                       type="button"
                       variant="outline"
@@ -1341,7 +1364,7 @@ export function EditBookingPageClient({
                         })
                       }
                     >
-                      <Plus className="mr-2 h-4 w-4" /> Add Day
+                      <Plus className="mr-2 h-4 w-4" /> Add More Day
                     </Button>
                   </div>
                   <div className="overflow-x-auto">
@@ -1352,7 +1375,7 @@ export function EditBookingPageClient({
                           <TableHead>Date</TableHead>
                           <TableHead>City</TableHead>
                           <TableHead>Description</TableHead>
-                          <TableHead></TableHead>
+                          <TableHead />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1390,8 +1413,11 @@ export function EditBookingPageClient({
                                     </SelectTrigger>
                                     <SelectContent>
                                       {cities.map((city) => (
-                                        <SelectItem key={city} value={city}>
-                                          {city}
+                                        <SelectItem
+                                          key={city.id}
+                                          value={city.name}
+                                        >
+                                          {city.name}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1404,6 +1430,7 @@ export function EditBookingPageClient({
                                 {...register(
                                   `cairoTransfer.days.${index}.description`
                                 )}
+                                placeholder="Transportation details..."
                                 rows={2}
                               />
                             </TableCell>
@@ -1429,15 +1456,19 @@ export function EditBookingPageClient({
               <Separator />
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold">
-                  Aswan/Luxor/Hurghada Transfer
+                  Aswan/Luxor/Hurghada Transfer Order
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>No. of Pax:</Label>
-                    <Input value={watch("paxCount")} readOnly />
+                    <Label className="text-base font-medium">No. of Pax:</Label>
+                    <Input
+                      value={watch("paxCount")}
+                      readOnly
+                      className="mt-1 "
+                    />
                   </div>
                   <div>
-                    <Label>Van Type:</Label>
+                    <Label className="text-base font-medium">Van Type:</Label>
                     <Controller
                       name="aswanLuxorTransfer.vanType"
                       control={control}
@@ -1446,13 +1477,13 @@ export function EditBookingPageClient({
                           onValueChange={field.onChange}
                           value={field.value}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="mt-1">
                             <SelectValue placeholder="Select van type" />
                           </SelectTrigger>
                           <SelectContent>
-                            {vanTypes.map((van) => (
-                              <SelectItem key={van} value={van}>
-                                {van}
+                            {vans.map((van) => (
+                              <SelectItem key={van.id} value={van.name}>
+                                {van.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1463,7 +1494,9 @@ export function EditBookingPageClient({
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label>Daily Schedule</Label>
+                    <Label className="text-base font-medium">
+                      Daily Schedule
+                    </Label>
                     <Button
                       type="button"
                       variant="outline"
@@ -1477,7 +1510,7 @@ export function EditBookingPageClient({
                         })
                       }
                     >
-                      <Plus className="mr-2 h-4 w-4" /> Add Day
+                      <Plus className="mr-2 h-4 w-4" /> Add More Day
                     </Button>
                   </div>
                   <div className="overflow-x-auto">
@@ -1488,7 +1521,7 @@ export function EditBookingPageClient({
                           <TableHead>Date</TableHead>
                           <TableHead>City</TableHead>
                           <TableHead>Description</TableHead>
-                          <TableHead></TableHead>
+                          <TableHead />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1526,8 +1559,11 @@ export function EditBookingPageClient({
                                     </SelectTrigger>
                                     <SelectContent>
                                       {cities.map((city) => (
-                                        <SelectItem key={city} value={city}>
-                                          {city}
+                                        <SelectItem
+                                          key={city.id}
+                                          value={city.name}
+                                        >
+                                          {city.name}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1540,6 +1576,7 @@ export function EditBookingPageClient({
                                 {...register(
                                   `aswanLuxorTransfer.days.${index}.description`
                                 )}
+                                placeholder="Transportation details..."
                                 rows={2}
                               />
                             </TableCell>
@@ -1565,6 +1602,7 @@ export function EditBookingPageClient({
             </CardContent>
           </Card>
 
+          {/* 5. Meeting & Assist */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
@@ -1575,27 +1613,41 @@ export function EditBookingPageClient({
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>No. of Pax:</Label>
-                  <Input value={watch("paxCount")} readOnly />
+                  <Label className="text-base font-medium">No. of Pax:</Label>
+                  <Input value={watch("paxCount")} readOnly className="mt-1 " />
                 </div>
                 <div>
-                  <Label>Name:</Label>
-                  <Input {...register("meetingAssist.name")} />
+                  <Label className="text-base font-medium">Name:</Label>
+                  <Input
+                    {...register("meetingAssist.name")}
+                    placeholder="Contact person name"
+                    className="mt-1"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Driver Name:</Label>
-                  <Input {...register("meetingAssist.driver.name")} />
+                  <Label className="text-base font-medium">Driver name:</Label>
+                  <Input
+                    {...register("meetingAssist.driver.name")}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
-                  <Label>Driver Contact:</Label>
-                  <Input {...register("meetingAssist.driver.contact")} />
+                  <Label className="text-base font-medium">
+                    Driver Contact:
+                  </Label>
+                  <Input
+                    {...register("meetingAssist.driver.contact")}
+                    className="mt-1"
+                  />
                 </div>
               </div>
-              <div>
-                <Label>Arrival Flight Details:</Label>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
+              <div className="space-y-4">
+                <Label className="text-base font-medium">
+                  Arrival Flight Details:
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <Label className="text-sm">Date</Label>
                     <Input
@@ -1625,8 +1677,8 @@ export function EditBookingPageClient({
                           </SelectTrigger>
                           <SelectContent>
                             {internationalAirlines.map((name) => (
-                              <SelectItem key={name} value={name}>
-                                {name}
+                              <SelectItem key={name.id} value={name.name}>
+                                {name.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1638,12 +1690,13 @@ export function EditBookingPageClient({
                     <Label className="text-sm">Flight No</Label>
                     <Input
                       {...register("meetingAssist.arrivalFlight.flightNo")}
+                      placeholder="MS123"
                     />
                   </div>
                 </div>
               </div>
               <div>
-                <Label>Nationality:</Label>
+                <Label className="text-base font-medium">Nationality:</Label>
                 <Controller
                   name="meetingAssist.nationality"
                   control={control}
@@ -1654,8 +1707,8 @@ export function EditBookingPageClient({
                       </SelectTrigger>
                       <SelectContent>
                         {nationalities.map((nat) => (
-                          <SelectItem key={nat} value={nat}>
-                            {nat}
+                          <SelectItem key={nat.id} value={nat.name}>
+                            {nat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1666,6 +1719,7 @@ export function EditBookingPageClient({
             </CardContent>
           </Card>
 
+          {/* 6. Guide Details */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
@@ -1681,10 +1735,10 @@ export function EditBookingPageClient({
                   guideIndex={guideIndex}
                   control={control}
                   register={register}
-                  setValue={setValue}
                   removeGuide={removeGuide}
                   guideFields={guideFields}
                   cities={cities}
+                  guides={guides}
                   nationalities={nationalities}
                 />
               ))}
@@ -1710,6 +1764,7 @@ export function EditBookingPageClient({
             </CardContent>
           </Card>
 
+          {/* Submit Button */}
           <div className="flex justify-center">
             <Button
               type="submit"

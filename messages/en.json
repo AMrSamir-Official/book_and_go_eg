@@ -5,9 +5,9 @@
     "invoices": "Invoices",
     "notifications": "Notifications",
     "settings": "Settings",
-    "emails": "emails",
-    "users": "users",
-
+    "emails": "Emails",
+    "users": "Users",
+    "pending financials": "Pending Financials",
     "accounting": "Accounting",
     "dues": "Dues & Settlements"
   },
@@ -92,6 +92,7 @@
     "markPaid": "Mark as Paid",
     "noPendingItems": "No pending financial items found."
   },
+
   "bookings": {
     "title": "Bookings",
     "description": "Manage all your travel bookings",
@@ -169,6 +170,7 @@
     "paymentMethod": "Payment Method",
     "status": "Status",
     "actions": "Actions",
+    "editInvoice": "Edit Accounting",
     "view": "View",
     "edit": "Edit",
     "delete": "Delete",

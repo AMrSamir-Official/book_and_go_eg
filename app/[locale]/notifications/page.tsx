@@ -56,6 +56,7 @@ interface ApiNotification {
 
 // 2. واجهة عرض موحدة للتعامل مع كلا النوعين
 interface DisplayNotification extends ApiNotification {
+  id: string;
   type: "due_reminder" | "invoice_reminder" | "overdue";
   priority: "medium" | "high";
   title: string;
@@ -211,7 +212,7 @@ export default function NotificationsPage() {
           n.title.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [notifications, searchTerm]);
-
+  console.log("notification :", notifications);
   // ... (شاشات التحميل والتحقق من المستخدم تبقى كما هي)
   if (isAuthLoading) {
     return (
@@ -298,7 +299,7 @@ export default function NotificationsPage() {
               ) : (
                 filteredNotifications.map((notification) => (
                   <Card
-                    key={notification._id}
+                    key={notification._id || notification.id}
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       !notification.isRead
                         ? "border-l-4 border-l-primary bg-muted/30"
@@ -367,7 +368,10 @@ export default function NotificationsPage() {
                             {!notification.isRead && (
                               <DropdownMenuItem
                                 onClick={(e) =>
-                                  handleMarkAsRead(notification._id, e)
+                                  handleMarkAsRead(
+                                    notification._id || notification.id,
+                                    e
+                                  )
                                 }
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" /> Mark as
@@ -376,7 +380,7 @@ export default function NotificationsPage() {
                             )}
                             {/* <DropdownMenuItem
                               className="text-destructive"
-                              onClick={(e) => handleDelete(notification._id, e)}
+                              onClick={(e) => handleDelete(notification._id||notification.id, e)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem> */}

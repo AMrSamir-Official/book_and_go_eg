@@ -2,15 +2,15 @@
 
 "use server";
 
+import { BookingTypes } from "@/types/bookingData";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 // تأكد من أن هذا المسار صحيح لملف صفحتك
-import { BookingFormData } from "@/app/[locale]/bookings/new/page";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-export async function createBookingAction(data: BookingFormData) {
+export async function createBookingAction(data: BookingTypes) {
   const token = (await cookies()).get("token")?.value;
   if (!token) {
     return { success: false, message: "Authentication failed. Please log in." };
@@ -151,7 +151,7 @@ export async function getBookingByIdAction(bookingId: string) {
 
 export async function updateBookingAction(
   bookingId: string,
-  data: BookingFormData
+  data: BookingTypes
 ) {
   const token = (await cookies()).get("token")?.value;
   if (!token) {

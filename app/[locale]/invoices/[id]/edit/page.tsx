@@ -1,39 +1,62 @@
 // src/app/[locale]/invoices/[id]/edit/page.tsx
 
-import { getInvoiceByIdAction } from "@/actions/invoiceActions"; // استيراد دالة جلب الفاتورة
+import { getInvoiceByIdAction } from "@/actions/invoiceActions";
+import { fetchAllBookingFormData } from "@/actions/settingsActions"; // <-- إضافة جديدة
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { EditInvoicePageClient } from "./edit-invoice-client"; // سنقوم بتغيير اسم الملف العميل
+import { EditInvoicePageClient } from "./edit-invoice-client";
 
 export default async function EditInvoicePage({
   params,
 }: {
   params: { id: string };
 }) {
-  // جلب بيانات الفاتورة الحالية باستخدام ID من الرابط
-  const result = await getInvoiceByIdAction(params.id);
+  // Fetch invoice data and form dropdown data concurrently
+  const [invoiceResult, formDataResult] = await Promise.all([
+    getInvoiceByIdAction(params.id),
+    fetchAllBookingFormData(), // <-- إضافة جديدة لجلب بيانات القوائم
+  ]);
 
-  if (!result.success || !result.data) {
+  // Handle errors for either fetch operation
+  if (!invoiceResult.success || formDataResult.error) {
     return (
       <DashboardLayout>
-        <div className="text-center p-8">
-          <h2 className="text-2xl font-bold mb-2 text-destructive">Error</h2>
-          <p className="text-muted-foreground">
-            {result.message || "Could not find the invoice to edit."}
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/invoices">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Invoices
-            </Link>
-          </Button>
+        <div className="p-4 md:p-8">
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">
+                Error Loading Page Data
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Could not load required data. Please try again later.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {invoiceResult.message &&
+                  `Invoice Error: ${invoiceResult.message}`}
+                {formDataResult.error &&
+                  `Form Data Error: ${formDataResult.error}`}
+              </p>
+              <Button asChild className="mt-4">
+                <Link href="/invoices">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Invoices
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </DashboardLayout>
     );
   }
 
-  // تمرير بيانات الفاتورة الكاملة إلى المكون العميل
-  return <EditInvoicePageClient invoice={result.data} />;
+  // Pass both invoice data and dropdown data to the client component
+  return (
+    <EditInvoicePageClient
+      invoice={invoiceResult.data}
+      initialData={formDataResult.data} // <-- إضافة جديدة
+    />
+  );
 }

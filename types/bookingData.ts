@@ -1,14 +1,14 @@
-export interface BookingData {
-  id: string;
+export interface BookingTypes {
+  id?: string;
+
   fileNumber: string;
   vendor: string;
   paxCount: number;
+  childCount?: number;
   arrivalDate: string;
   departureDate: string;
   numberOfNights: number;
   nationality: string;
-  status: "pending" | "confirmed" | "cancelled";
-  createdAt: string;
   arrivalFlight: {
     date: string;
     time: string;
@@ -54,7 +54,11 @@ export interface BookingData {
   cairoTransfer: {
     paxCount: number;
     vanType: string;
-    driver: { name: string; contact: string; description: string };
+    driver: {
+      name: string;
+      contact: string;
+      description: string;
+    };
     days: Array<{
       day: number;
       date: string;
@@ -75,7 +79,10 @@ export interface BookingData {
   meetingAssist: {
     paxCount: number;
     name: string;
-    driver: { name: string; contact: string };
+    driver: {
+      name: string;
+      contact: string;
+    };
     arrivalFlight: {
       date: string;
       time: string;
@@ -85,7 +92,6 @@ export interface BookingData {
     nationality: string;
   };
   guides: Array<{
-    id: string;
     city: string;
     guideName: string;
     guestNationality: string;

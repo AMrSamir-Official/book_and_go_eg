@@ -18,7 +18,9 @@ declare module "jspdf" {
 // --- Full Booking PDF Generation ---
 // =================================================================
 
-// --- استبدل الدالة القديمة بهذه الدالة الكاملة ---
+// --- استبدل الدالة القديمة بهذه الدالة الكاملة ---// /lib/podf-utils/booking.ts
+
+// --- الكود الصحيح والكامل ---
 const generatePDFBlob = (booking: BookingData): Blob => {
   const doc = new jsPDF();
   const pageHeight =
@@ -26,7 +28,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
   const pageWidth =
     doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
 
-  doc.addImage(logoBase64, "PNG", 15, 10, 50, 15); // الأرقام هي (x, y, width, height) ويمكنك تعديلها
+  doc.addImage(logoBase64, "PNG", 15, 10, 50, 15);
   let y = 35;
   doc.addFileToVFS("Amiri-Regular.ttf", amiriFontBase64);
   doc.addFont("Amiri-Regular.ttf", "Amiri", "normal", "UTF-8");
@@ -53,33 +55,42 @@ const generatePDFBlob = (booking: BookingData): Blob => {
   });
   y += 15;
 
-  // --- 2. Basic Information ---
+  // --- 2. Basic Information (The Corrected Section) ---
   doc.setFontSize(14);
   doc.text("1. Basic Booking Information", 14, y);
   y += 8;
+
+  const basicInfoBody = [
+    [
+      `File Number: ${booking.fileNumber}`,
+      `Nationality: ${booking.nationality}`,
+    ],
+    [`Vendor: ${booking.vendor}`, `Arrival Date: ${booking.arrivalDate}`],
+    [`Adults: ${booking.paxCount}`, `Departure Date: ${booking.departureDate}`],
+  ];
+
+  if (typeof booking.childCount === "number" && booking.childCount > 0) {
+    basicInfoBody.push([
+      `Children: ${booking.childCount}`,
+      `No. of Nights: ${booking.numberOfNights}`,
+    ]);
+  } else {
+    basicInfoBody.push(["", `No. of Nights: ${booking.numberOfNights}`]);
+  }
+
   autoTable(doc, {
     startY: y,
-    body: [
-      [
-        `File Number: ${booking.fileNumber}`,
-        `Nationality: ${booking.nationality}`,
-      ],
-      [`Vendor: ${booking.vendor}`, `Arrival Date: ${booking.arrivalDate}`],
-      [
-        `No. of Pax: ${booking.paxCount}`,
-        `Departure Date: ${booking.departureDate}`,
-      ],
-      ["", `No. of Nights: ${booking.numberOfNights}`],
-    ],
+    body: basicInfoBody,
     theme: "plain",
     styles: { font: "Amiri" },
   });
   y = (doc as any).lastAutoTable.finalY + 10;
 
+  // --- Meeting & Assist Details ---
   if (booking.meetingAssist && booking.meetingAssist.name) {
-    checkPageBreak(60); // Check if there is enough space on the page
+    checkPageBreak(60);
     doc.setFontSize(14);
-    doc.setTextColor("#1e40af"); // لون مختلف للتمييز
+    doc.setTextColor("#1e40af");
     doc.text("2. Meeting & Assist Details", 14, y);
     y += 8;
 
@@ -111,7 +122,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
   // --- 3. Flight Details ---
   checkPageBreak(50);
   doc.setFontSize(14);
-  doc.text("2. Flight Details", 14, y);
+  doc.text("3. Flight Details", 14, y); // <-- تم تصحيح الترقيم هنا
   y += 8;
   autoTable(doc, {
     startY: y,
@@ -146,10 +157,11 @@ const generatePDFBlob = (booking: BookingData): Blob => {
     y = (doc as any).lastAutoTable.finalY + 10;
   }
 
+  // ... باقي الدالة كما هي ...
   // --- 4. Accommodation ---
   checkPageBreak(40);
   doc.setFontSize(14);
-  doc.text("3. Accommodation", 14, y);
+  doc.text("4. Accommodation", 14, y); // <-- تم تصحيح الترقيم
   autoTable(doc, {
     startY: y + 2,
     head: [["City", "Hotel Name", "Check-in", "Check-out", "Status"]],
@@ -189,7 +201,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
   // --- 5. Itinerary & Program ---
   checkPageBreak(80);
   doc.setFontSize(14);
-  doc.text("4. Itinerary & Program", 14, y);
+  doc.text("5. Itinerary & Program", 14, y); // <-- تم تصحيح الترقيم
   y += 8;
   doc.setFontSize(10);
   let textLines = doc.splitTextToSize(
@@ -231,7 +243,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
   // --- 6. Transportation ---
   checkPageBreak(80);
   doc.setFontSize(14);
-  doc.text("5. Transportation", 14, y);
+  doc.text("6. Transportation", 14, y); // <-- تم تصحيح الترقيم
   y += 8;
   doc.setFontSize(12);
   doc.text("Cairo Transfer Order", 15, y);
@@ -275,7 +287,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
 
   checkPageBreak(50);
   doc.setFontSize(12);
-  doc.text("Aswan & Luxor &Hurghada Transfer", 15, y);
+  doc.text("Aswan & Luxor & Hurghada Transfer", 15, y);
   y += 6;
   autoTable(doc, {
     startY: y,
@@ -307,7 +319,7 @@ const generatePDFBlob = (booking: BookingData): Blob => {
   // --- 7. Guide Details ---
   checkPageBreak(50);
   doc.setFontSize(14);
-  doc.text("6. Guide Details", 14, y);
+  doc.text("7. Guide Details", 14, y); // <-- تم تصحيح الترقيم
   y += 8;
 
   booking.guides.forEach((guide) => {
@@ -361,7 +373,6 @@ const generatePDFBlob = (booking: BookingData): Blob => {
 
   return doc.output("blob");
 };
-
 export const downloadBookingPDF = (booking: BookingData) => {
   try {
     const blob = generatePDFBlob(booking);

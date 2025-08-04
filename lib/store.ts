@@ -1,4 +1,4 @@
-import { BookingFormData } from "@/app/[locale]/bookings/new/page";
+import { BookingFormData } from "@/app/[locale]/bookings/new/NewBookingPageClient";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

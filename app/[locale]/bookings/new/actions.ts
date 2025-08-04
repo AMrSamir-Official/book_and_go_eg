@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 // تأكد من أن هذا المسار صحيح لملف صفحتك
-import { BookingFormData } from "@/app/[locale]/bookings/new/page";
+import { BookingFormData } from "@/app/[locale]/bookings/new/NewBookingPageClient";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 

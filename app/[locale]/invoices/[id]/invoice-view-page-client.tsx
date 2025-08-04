@@ -14,9 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { downloadInvoicePDF, shareInvoicePDF } from "@/lib/podf-utils/invoice";
-import { Edit, Printer, Share2 } from "lucide-react"; // أضف أيقونة المشاركة
+import { Edit, Printer, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+// UPDATED InvoiceData interface
+// The new, correct interface for BOTH files
 interface InvoiceData {
   id: string;
   _id: string;
@@ -24,25 +27,32 @@ interface InvoiceData {
   title: string;
   totalInvoiceAmount: number;
   totalInvoiceCurrency: "EGP" | "USD";
+  totalInvoiceExchangeRate?: number;
   paidAmount: number;
   restAmount: number;
   restAmountCurrency: "EGP" | "USD";
+  restAmountExchangeRate?: number;
+
   extraIncoming: Array<{
     incomeType: string;
     amount: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   accommodation: Array<{
+    city: string;
     name: string;
     totalAmount: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   domesticFlights: Array<{
     details: string;
     cost: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   entranceTickets: Array<{
@@ -50,45 +60,54 @@ interface InvoiceData {
     cost: number;
     no: number;
     total: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
   }>;
   guide: Array<{
+    city: string;
     name: string;
     cost: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   transportation: Array<{
     supplierName: string;
     city: string;
     amount: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
-    guides: Array<{ guideNumber: string; totalCost: number }>;
   }>;
+
   grandTotalIncomeEGP: number;
   grandTotalExpensesEGP: number;
   restProfitEGP: number;
+
   fileNumber: string;
   supplierName: string;
   dueDate: string;
   paymentMethod: string;
   status: string;
 }
-// Helper function to format currency
+
 const formatCurrency = (amount: number, currency: string = "EGP") => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
   }).format(amount || 0);
 };
-
+const convertToEGP = (amount: number, currency: string, rate?: number) => {
+  if (currency?.trim().toUpperCase() === "USD" && rate && rate > 0) {
+    return amount * rate;
+  }
+  return amount;
+};
 export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
   const router = useRouter();
   const handleDownload = () => {
     downloadInvoicePDF(invoice);
   };
-
   const handleShare = async () => {
     try {
       await shareInvoicePDF(
@@ -100,15 +119,14 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
       alert((error as Error).message);
     }
   };
+
   if (!invoice) {
-    // ... (Not Found component remains the same)
     return <div>Invoice not found.</div>;
   }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">
@@ -132,9 +150,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Main Invoice & Extra Incoming */}
             <Card>
               <CardHeader>
                 <CardTitle>Income Details</CardTitle>
@@ -143,29 +159,38 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                 <h3 className="font-semibold mb-2">Main Invoice</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div>
-                    <Label>Total Invoice</Label>
+                    <Label>Total Invoice (EGP)</Label>
                     <p className="font-bold">
                       {formatCurrency(
-                        invoice.totalInvoiceAmount,
-                        invoice.totalInvoiceCurrency
+                        convertToEGP(
+                          invoice.totalInvoiceAmount,
+                          invoice.totalInvoiceCurrency,
+                          invoice.totalInvoiceExchangeRate
+                        )
                       )}
                     </p>
                   </div>
                   <div>
-                    <Label>Paid Amount</Label>
+                    <Label>Paid Amount (EGP)</Label>
                     <p>
                       {formatCurrency(
-                        invoice.paidAmount,
-                        invoice.totalInvoiceCurrency
+                        convertToEGP(
+                          invoice.paidAmount,
+                          invoice.totalInvoiceCurrency,
+                          invoice.totalInvoiceExchangeRate
+                        )
                       )}
                     </p>
                   </div>
                   <div>
-                    <Label>Rest Amount</Label>
+                    <Label>Rest Amount (EGP)</Label>
                     <p>
                       {formatCurrency(
-                        invoice.restAmount,
-                        invoice.restAmountCurrency
+                        convertToEGP(
+                          invoice.restAmount,
+                          invoice.restAmountCurrency,
+                          invoice.restAmountExchangeRate
+                        )
                       )}
                     </p>
                   </div>
@@ -185,7 +210,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                       <TableRow key={index}>
                         <TableCell>{item.incomeType}</TableCell>
                         <TableCell>
-                          {formatCurrency(item.amount, item.currency)}
+                          {formatCurrency(
+                            convertToEGP(
+                              item.amount,
+                              item.currency,
+                              item.exchangeRate
+                            )
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -203,19 +234,18 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
               </CardContent>
             </Card>
 
-            {/* Expenses Breakdown */}
             <Card>
               <CardHeader>
                 <CardTitle>Expenses Breakdown</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Loop through each expense type and render a table */}
                 {invoice.accommodation.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-2">Accommodation</h3>
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>City</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Status</TableHead>
@@ -224,9 +254,16 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                       <TableBody>
                         {invoice.accommodation.map((item, i) => (
                           <TableRow key={i}>
+                            <TableCell>{item.city}</TableCell> {/* <-- NEW */}
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
-                              {formatCurrency(item.totalAmount, item.currency)}
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.totalAmount,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -261,7 +298,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                           <TableRow key={i}>
                             <TableCell>{item.details}</TableCell>
                             <TableCell>
-                              {formatCurrency(item.cost, item.currency)}
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.cost,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -297,11 +340,23 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                           <TableRow key={i}>
                             <TableCell>{item.site}</TableCell>
                             <TableCell>
-                              {formatCurrency(item.cost, item.currency)}
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.cost,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
                             </TableCell>
                             <TableCell>{item.no}</TableCell>
                             <TableCell>
-                              {formatCurrency(item.total, item.currency)}
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.total,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -315,6 +370,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>City</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Cost</TableHead>
                           <TableHead>Status</TableHead>
@@ -323,9 +379,16 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                       <TableBody>
                         {invoice.guide.map((item, i) => (
                           <TableRow key={i}>
+                            <TableCell>{item.city}</TableCell> {/* <-- NEW */}
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
-                              {formatCurrency(item.cost, item.currency)}
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.cost,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -347,43 +410,51 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                 {invoice.transportation.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-2">Transportation</h3>
-                    {invoice.transportation.map((item, i) => (
-                      <div key={i} className="border p-2 rounded-lg mb-2">
-                        <p>
-                          <strong>{item.supplierName}</strong> in {item.city} -{" "}
-                          {formatCurrency(item.amount, item.currency)} (
-                          {item.status})
-                        </p>
-                        <h4 className="text-sm font-semibold mt-2">
-                          Guide Details:
-                        </h4>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Guide</TableHead>
-                              <TableHead>Cost</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {item.guides.map((g, gi) => (
-                              <TableRow key={gi}>
-                                <TableCell>{g.guideNumber}</TableCell>
-                                <TableCell>
-                                  {formatCurrency(g.totalCost, "EGP")}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ))}
+                    {/* UPDATED: Simplified table for transportation */}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>City</TableHead>
+                          <TableHead>Supplier</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.transportation.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{item.city}</TableCell>
+                            <TableCell>{item.supplierName}</TableCell>
+                            <TableCell>
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.amount,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.status === "paid"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             <Card>
               <CardHeader>

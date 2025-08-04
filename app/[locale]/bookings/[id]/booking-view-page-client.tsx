@@ -54,6 +54,7 @@ interface BookingData {
   fileNumber: string;
   vendor: string;
   paxCount: number;
+  childCount?: number;
   arrivalDate: string;
   departureDate: string;
   numberOfNights: number;
@@ -363,6 +364,14 @@ export function BookingViewPageClient({
                 </p>
                 <p className="text-lg font-semibold">{booking.paxCount}</p>
               </div>
+              {typeof booking.childCount === "number" && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Child
+                  </p>
+                  <p className="text-lg font-semibold">{booking.childCount}</p>
+                </div>
+              )}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Nationality

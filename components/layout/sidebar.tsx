@@ -14,6 +14,7 @@ import {
   FileText,
   LayoutDashboard,
   Plane,
+  Settings,
   Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -76,12 +77,12 @@ export const navigation = [
   //   icon: Mail,
   //   roles: ["admin"],
   // },
-  // {
-  //   name: "settings",
-  //   href: "/admin/settings",
-  //   icon: Settings,
-  //   roles: ["admin"],
-  // },
+  {
+    name: "settings",
+    href: "/admin/settings",
+    icon: Settings,
+    roles: ["admin"],
+  },
 ];
 
 interface SidebarProps {

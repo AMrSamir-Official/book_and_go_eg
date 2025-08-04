@@ -1,4 +1,4 @@
-// TransportationItem.tsx
+"use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +19,51 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Minus, Plus } from "lucide-react";
-import { useFieldArray } from "react-hook-form";
+import {
+  Control,
+  Controller,
+  useFieldArray,
+  UseFormRegister,
+  UseFormSetValue,
+  UseFormWatch,
+} from "react-hook-form";
+// types/invoice.ts أو في نفس الملف إذا كان الاستخدام محصورًا هنا
+export interface InvoiceFormData {
+  // ... يجب أن يكون هذا مطابقًا لهيكل الفورم الكامل لديك
+  transportation: Array<{
+    city: string;
+    supplierName: string;
+    siteCostNo: string;
+    amount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
+    status: "pending" | "paid";
+    guides: Array<{
+      guideNumber: string;
+      date: string;
+      note: string;
+      totalCost: number;
+    }>;
+  }>;
+}
 
+interface DataItem {
+  id: string;
+  _id?: string;
+  name: string;
+}
+
+interface TransportationItemProps {
+  control: Control<InvoiceFormData>;
+  transportIndex: number;
+  register: UseFormRegister<InvoiceFormData>;
+  watch: UseFormWatch<InvoiceFormData>;
+  setValue: UseFormSetValue<InvoiceFormData>;
+  removeTransportation: (index: number) => void;
+  cities: DataItem[];
+  vendors: DataItem[];
+  guides: DataItem[];
+}
 export const TransportationItem = ({
   control,
   transportIndex,
@@ -28,7 +71,10 @@ export const TransportationItem = ({
   watch,
   setValue,
   removeTransportation,
-}) => {
+  cities,
+  vendors,
+  guides,
+}: TransportationItemProps) => {
   const {
     fields: guideDetailFields,
     append: appendGuideDetail,
@@ -42,12 +88,11 @@ export const TransportationItem = ({
     <div className="border rounded-lg p-6 space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h5 className="font-medium">Transportation {transportIndex + 1}</h5>
-        {/* زر الحذف يظهر فقط إذا كان هناك أكثر من عنصر واحد */}
         {removeTransportation && (
           <Button
             type="button"
-            variant="outline"
-            size="sm"
+            variant="destructive"
+            size="icon"
             onClick={() => removeTransportation(transportIndex)}
           >
             <Minus className="h-4 w-4" />
@@ -55,31 +100,51 @@ export const TransportationItem = ({
         )}
       </div>
 
-      {/* --- الحقول الرئيسية للمواصلات --- */}
+      {/* --- Main Transportation Fields --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <Label>City</Label>
-          <Select
-            onValueChange={(value) =>
-              setValue(`transportation.${transportIndex}.city`, value)
-            }
-            defaultValue={watch(`transportation.${transportIndex}.city`)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select city" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Cairo">Cairo</SelectItem>
-              <SelectItem value="Aswan">Aswan</SelectItem>
-              <SelectItem value="Luxor">Luxor</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            name={`transportation.${transportIndex}.city`}
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select city" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cities.map((city) => (
+                    <SelectItem key={city.id} value={city.name}>
+                      {city.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
         <div>
           <Label>Supplier Name</Label>
-          <Input
-            {...register(`transportation.${transportIndex}.supplierName`)}
-            placeholder="Supplier name"
+          <Controller
+            name={`transportation.${transportIndex}.supplierName`}
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select supplier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map((vendor) => (
+                    <SelectItem
+                      key={vendor.id || vendor._id}
+                      value={vendor.name}
+                    >
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           />
         </div>
         <div>
@@ -105,25 +170,32 @@ export const TransportationItem = ({
         </div>
         <div>
           <Label>Currency</Label>
-          <RadioGroup
-            defaultValue={watch(`transportation.${transportIndex}.currency`)}
-            className="flex items-center space-x-4 pt-2"
-            onValueChange={(value) =>
-              setValue(
-                `transportation.${transportIndex}.currency`,
-                value as "EGP" | "USD"
-              )
-            }
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="EGP" id={`trans-egp-${transportIndex}`} />
-              <Label htmlFor={`trans-egp-${transportIndex}`}>EGP</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="USD" id={`trans-usd-${transportIndex}`} />
-              <Label htmlFor={`trans-usd-${transportIndex}`}>USD</Label>
-            </div>
-          </RadioGroup>
+          <Controller
+            name={`transportation.${transportIndex}.currency`}
+            control={control}
+            render={({ field }) => (
+              <RadioGroup
+                onValueChange={field.onChange}
+                value={field.value}
+                className="flex items-center space-x-4 pt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem
+                    value="EGP"
+                    id={`trans-egp-${transportIndex}`}
+                  />
+                  <Label htmlFor={`trans-egp-${transportIndex}`}>EGP</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem
+                    value="USD"
+                    id={`trans-usd-${transportIndex}`}
+                  />
+                  <Label htmlFor={`trans-usd-${transportIndex}`}>USD</Label>
+                </div>
+              </RadioGroup>
+            )}
+          />
         </div>
         {watch(`transportation.${transportIndex}.currency`) === "USD" && (
           <div>
@@ -142,35 +214,37 @@ export const TransportationItem = ({
 
       <div className="mb-4">
         <Label>Status</Label>
-        <RadioGroup
-          defaultValue={watch(`transportation.${transportIndex}.status`)}
-          onValueChange={(value) =>
-            setValue(
-              `transportation.${transportIndex}.status`,
-              value as "pending" | "paid"
-            )
-          }
-        >
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem
-                value="pending"
-                id={`trans-pending-${transportIndex}`}
-              />
-              <Label htmlFor={`trans-pending-${transportIndex}`}>Pending</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem
-                value="paid"
-                id={`trans-paid-${transportIndex}`}
-              />
-              <Label htmlFor={`trans-paid-${transportIndex}`}>Paid</Label>
-            </div>
-          </div>
-        </RadioGroup>
+        <Controller
+          name={`transportation.${transportIndex}.status`}
+          control={control}
+          render={({ field }) => (
+            <RadioGroup
+              onValueChange={field.onChange}
+              value={field.value}
+              className="flex items-center space-x-4 pt-2"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem
+                  value="pending"
+                  id={`trans-pending-${transportIndex}`}
+                />
+                <Label htmlFor={`trans-pending-${transportIndex}`}>
+                  Pending
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem
+                  value="paid"
+                  id={`trans-paid-${transportIndex}`}
+                />
+                <Label htmlFor={`trans-paid-${transportIndex}`}>Paid</Label>
+              </div>
+            </RadioGroup>
+          )}
+        />
       </div>
 
-      {/* --- جدول تفاصيل المرشدين الديناميكي --- */}
+      {/* --- Dynamic Guide Details Table --- */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h6 className="font-medium">Guide Details</h6>
@@ -180,7 +254,7 @@ export const TransportationItem = ({
             size="sm"
             onClick={() =>
               appendGuideDetail({
-                guideNumber: `Guide ${guideDetailFields.length + 1}`,
+                guideNumber: "",
                 date: "",
                 note: "",
                 totalCost: 0,
@@ -204,11 +278,26 @@ export const TransportationItem = ({
             {guideDetailFields.map((guideField, guideIndex) => (
               <TableRow key={guideField.id}>
                 <TableCell>
-                  <Input
-                    {...register(
-                      `transportation.${transportIndex}.guides.${guideIndex}.guideNumber`
+                  <Controller
+                    name={`transportation.${transportIndex}.guides.${guideIndex}.guideNumber`}
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select guide" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {guides.map((guide) => (
+                            <SelectItem key={guide.id} value={guide.name}>
+                              {guide.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
-                    placeholder="Guide Name/No"
                   />
                 </TableCell>
                 <TableCell>
@@ -240,8 +329,8 @@ export const TransportationItem = ({
                 <TableCell>
                   <Button
                     type="button"
-                    variant="outline"
-                    size="sm"
+                    variant="destructive"
+                    size="icon"
                     onClick={() => removeGuideDetail(guideIndex)}
                   >
                     <Minus className="h-4 w-4" />

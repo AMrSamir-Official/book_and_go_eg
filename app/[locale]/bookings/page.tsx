@@ -269,7 +269,7 @@ export default function BookingsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/bookings/edit/${booking._id}`}
+                                href={`/bookings/${booking._id}/edit`}
                                 className="flex items-center w-full"
                               >
                                 <Edit className="mr-2 h-4 w-4" /> {t("edit")}

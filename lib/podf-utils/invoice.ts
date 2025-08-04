@@ -6,6 +6,7 @@ import { amiriFontBase64 } from "../amiri-font"; // تأكد من أن هذا ا
 import { logoBase64 } from "./logo";
 
 // هذا الـ interface يجب أن يكون مطابقاً للـ interface في صفحة عرض الفاتورة
+// The new, correct interface for BOTH files
 interface InvoiceData {
   id: string;
   _id: string;
@@ -13,25 +14,32 @@ interface InvoiceData {
   title: string;
   totalInvoiceAmount: number;
   totalInvoiceCurrency: "EGP" | "USD";
+  totalInvoiceExchangeRate?: number;
   paidAmount: number;
   restAmount: number;
   restAmountCurrency: "EGP" | "USD";
+  restAmountExchangeRate?: number;
+
   extraIncoming: Array<{
     incomeType: string;
     amount: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   accommodation: Array<{
+    city: string;
     name: string;
     totalAmount: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   domesticFlights: Array<{
     details: string;
     cost: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   entranceTickets: Array<{
@@ -39,24 +47,30 @@ interface InvoiceData {
     cost: number;
     no: number;
     total: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
   }>;
   guide: Array<{
+    city: string;
     name: string;
     cost: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
   transportation: Array<{
     supplierName: string;
     city: string;
     amount: number;
-    currency: string;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
     status: string;
   }>;
+
   grandTotalIncomeEGP: number;
   grandTotalExpensesEGP: number;
   restProfitEGP: number;
+
   fileNumber: string;
   supplierName: string;
   dueDate: string;
@@ -78,7 +92,12 @@ const formatCurrency = (amount: number, currency: string = "EGP") => {
     currency: currency,
   }).format(amount || 0);
 };
-
+const convertToEGP = (amount: number, currency: string, rate?: number) => {
+  if (currency?.trim().toUpperCase() === "USD" && rate && rate > 0) {
+    return amount * rate;
+  }
+  return amount;
+};
 // الدالة الأساسية لإنشاء ملف PDF
 // الدالة الأساسية لإنشاء ملف PDF (النسخة الكاملة)
 const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
@@ -145,19 +164,34 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
     head: [["Description", "Amount"]],
     body: [
       [
-        "Total Invoice",
+        "Total Invoice (EGP)",
         formatCurrency(
-          invoice.totalInvoiceAmount,
-          invoice.totalInvoiceCurrency
+          convertToEGP(
+            invoice.totalInvoiceAmount,
+            invoice.totalInvoiceCurrency,
+            invoice.totalInvoiceExchangeRate
+          )
         ),
       ],
       [
-        "Paid Amount",
-        formatCurrency(invoice.paidAmount, invoice.totalInvoiceCurrency),
+        "Paid Amount (EGP)",
+        formatCurrency(
+          convertToEGP(
+            invoice.paidAmount,
+            invoice.totalInvoiceCurrency,
+            invoice.totalInvoiceExchangeRate
+          )
+        ),
       ],
       [
-        "Rest Amount",
-        formatCurrency(invoice.restAmount, invoice.restAmountCurrency),
+        "Rest Amount (EGP)",
+        formatCurrency(
+          convertToEGP(
+            invoice.restAmount,
+            invoice.restAmountCurrency,
+            invoice.restAmountExchangeRate
+          )
+        ),
       ],
     ],
   });
@@ -170,7 +204,9 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
       head: [["Extra Income Type", "Amount", "Status"]],
       body: invoice.extraIncoming.map((item) => [
         item.incomeType,
-        formatCurrency(item.amount, item.currency),
+        formatCurrency(
+          convertToEGP(item.amount, item.currency, item.exchangeRate)
+        ),
         item.status,
       ]),
       theme: "striped",
@@ -189,10 +225,13 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
   if (invoice.accommodation.length > 0) {
     autoTable(doc, {
       startY: y,
-      head: [["Accommodation", "Amount", "Status"]],
+      head: [["City", "Accommodation", "Amount (EGP)", "Status"]],
       body: invoice.accommodation.map((item) => [
+        item.city,
         item.name,
-        formatCurrency(item.totalAmount, item.currency),
+        formatCurrency(
+          convertToEGP(item.totalAmount, item.currency, item.exchangeRate)
+        ),
         item.status,
       ]),
       theme: "striped",
@@ -208,7 +247,9 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
       head: [["Domestic Flights", "Cost", "Status"]],
       body: invoice.domesticFlights.map((item) => [
         item.details,
-        formatCurrency(item.cost, item.currency),
+        formatCurrency(
+          convertToEGP(item.cost, item.currency, item.exchangeRate)
+        ),
         item.status,
       ]),
       theme: "striped",
@@ -224,9 +265,13 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
       head: [["Entrance Tickets (Site)", "Cost", "No.", "Total"]],
       body: invoice.entranceTickets.map((item) => [
         item.site,
-        formatCurrency(item.cost, item.currency),
+        formatCurrency(
+          convertToEGP(item.cost, item.currency, item.exchangeRate)
+        ),
         item.no,
-        formatCurrency(item.total, item.currency),
+        formatCurrency(
+          convertToEGP(item.total, item.currency, item.exchangeRate)
+        ),
       ]),
       theme: "striped",
       headStyles: { fillColor: "#4A5568", font: "Amiri" },
@@ -238,10 +283,13 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
   if (invoice.guide.length > 0) {
     autoTable(doc, {
       startY: y,
-      head: [["Guide", "Cost", "Status"]],
+      head: [["City", "Guide", "Cost (EGP)", "Status"]],
       body: invoice.guide.map((item) => [
+        item.city,
         item.name,
-        formatCurrency(item.cost, item.currency),
+        formatCurrency(
+          convertToEGP(item.cost, item.currency, item.exchangeRate)
+        ),
         item.status,
       ]),
       theme: "striped",
@@ -258,7 +306,9 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
       body: invoice.transportation.map((item) => [
         item.supplierName,
         item.city,
-        formatCurrency(item.amount, item.currency),
+        formatCurrency(
+          convertToEGP(item.amount, item.currency, item.exchangeRate)
+        ),
         item.status,
       ]),
       theme: "striped",

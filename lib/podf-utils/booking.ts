@@ -38,12 +38,24 @@ const generatePDFBlob = (booking: BookingTypes): Blob => {
   doc.text("Complete Travel Operation Form", pageWidth / 2, y, {
     align: "center",
   });
+  doc.setFontSize(12);
+  doc.setTextColor("#333333");
+  doc.text(
+    `Created: ${new Date(booking.createdAt).toLocaleDateString()}`,
+    pageWidth / 2,
+    y + 8,
+    { align: "center" }
+  );
+
+  y += 15;
   y += 8;
+
   doc.setFontSize(12);
   doc.setTextColor("#333333");
   doc.text(`File Number: ${booking.fileNumber}`, pageWidth / 2, y, {
     align: "center",
   });
+
   y += 15;
 
   doc.setFontSize(14);
@@ -153,6 +165,7 @@ const generatePDFBlob = (booking: BookingTypes): Blob => {
     styles: { font: "Amiri" },
   });
   y = (doc as any).lastAutoTable.finalY + 5;
+
   if (booking.domesticFlights && booking.domesticFlights.length > 0) {
     autoTable(doc, {
       startY: y,

@@ -48,6 +48,13 @@ interface InvoiceData {
     exchangeRate?: number;
     status: string;
   }>;
+  nileCruises: Array<{
+    name: string;
+    totalAmount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
+    status: string;
+  }>;
   domesticFlights: Array<{
     details: string;
     cost: number;
@@ -255,6 +262,47 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                         {invoice.accommodation.map((item, i) => (
                           <TableRow key={i}>
                             <TableCell>{item.city}</TableCell> {/* <-- NEW */}
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>
+                              {formatCurrency(
+                                convertToEGP(
+                                  item.totalAmount,
+                                  item.currency,
+                                  item.exchangeRate
+                                )
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.status === "paid"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                {invoice.nileCruises && invoice.nileCruises.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Nile Cruises</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.nileCruises.map((item, i) => (
+                          <TableRow key={i}>
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
                               {formatCurrency(

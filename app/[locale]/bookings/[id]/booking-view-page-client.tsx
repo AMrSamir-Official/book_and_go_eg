@@ -33,6 +33,7 @@ import {
   shareGuidePDF,
   shareMeetingAssistPDF,
 } from "@/lib/podf-utils/booking";
+import { BookingTypes } from "@/types/bookingData";
 import {
   ArrowLeft,
   Car,
@@ -47,122 +48,12 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Key } from "react";
-// import { BookingData } from "./print/booking-print-view"; // Assuming you move the interface to a types file
-interface BookingData {
-  id: string;
-  fileNumber: string;
-  vendor: string;
-  paxCount: number;
-  childCount?: number;
-  arrivalDate: string;
-  departureDate: string;
-  numberOfNights: number;
-  nationality: string;
-  status: "pending" | "confirmed" | "cancelled";
-  createdAt: string;
-
-  arrivalFlight: {
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  };
-  departureFlight: {
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  };
-  domesticFlights: Array<{
-    departure: string;
-    arrival: string;
-    date: string;
-    time: string;
-    airlineName: string;
-    flightNo: string;
-  }>;
-
-  hotels: Array<{
-    city: string;
-    name: string;
-    checkIn: string;
-    checkOut: string;
-    status: "pending" | "confirmed";
-  }>;
-  nileCruise: {
-    name: string;
-    checkIn: string;
-    checkOut: string;
-    status: "pending" | "confirmed";
-  };
-
-  include: string;
-  exclude: string;
-  specialNotice: string;
-  dailyProgram: Array<{
-    day: number;
-    date: string;
-    city: string;
-    details: string;
-  }>;
-
-  cairoTransfer: {
-    paxCount: number;
-    vanType: string;
-    driver: { name: string; contact: string; description: string };
-    days: Array<{
-      day: number;
-      date: string;
-      city: string;
-      description: string;
-    }>;
-  };
-  aswanLuxorTransfer: {
-    paxCount: number;
-    vanType: string;
-    days: Array<{
-      day: number;
-      date: string;
-      city: string;
-      description: string;
-    }>;
-  };
-  meetingAssist: {
-    paxCount: number;
-    name: string;
-    driver: { name: string; contact: string };
-    arrivalFlight: {
-      date: string;
-      time: string;
-      airlineName: string;
-      flightNo: string;
-    };
-    nationality: string;
-  };
-  guides: Array<{
-    _id: Key | null | undefined;
-    id: string;
-    city: string;
-    guideName: string;
-    guestNationality: string;
-    paxAdults: number;
-    paxChildren: number;
-    pickupHotelLocation: string;
-    days: Array<{
-      day: number;
-      date: string;
-      time: string;
-      include: string;
-      exclude: string;
-    }>;
-  }>;
-}
+// import { BookingTypes } from "./print/booking-print-view"; // Assuming you move the interface to a types file
 export function BookingViewPageClient({
   booking,
   errorMessage,
 }: {
-  booking: BookingData | null;
+  booking: BookingTypes | null;
   errorMessage?: string | null;
 }) {
   const t = useTranslations("common");
@@ -256,11 +147,11 @@ export function BookingViewPageClient({
     }
   };
 
-  const handlePrintGuide = (guide: BookingData["guides"][0]) => {
+  const handlePrintGuide = (guide: BookingTypes["guides"][0]) => {
     if (booking) downloadGuidePDF(guide, booking.fileNumber);
   };
 
-  const handleShareGuide = async (guide: BookingData["guides"][0]) => {
+  const handleShareGuide = async (guide: BookingTypes["guides"][0]) => {
     if (booking) {
       try {
         await shareGuidePDF(
@@ -401,7 +292,43 @@ export function BookingViewPageClient({
             </div>
           </CardContent>
         </Card>
-
+        {booking.guests && booking.guests.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="mr-2 h-5 w-5" /> Guest Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>First Name</TableHead>
+                      <TableHead>Last Name</TableHead>
+                      <TableHead>Type</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {booking.guests.map((guest, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{guest.title}</TableCell>
+                        <TableCell>{guest.firstName}</TableCell>
+                        <TableCell>{guest.lastName}</TableCell>
+                        <TableCell className="capitalize">
+                          {guest.type}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* --- Meeting & Assist --- */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -440,7 +367,8 @@ export function BookingViewPageClient({
                   Pax Count
                 </p>
                 <p className="text-lg font-semibold">
-                  {booking.meetingAssist.paxCount}
+                  {booking.meetingAssist.paxAdults || 0} Adults,{" "}
+                  {booking.meetingAssist.paxChildren || 0} Children
                 </p>
               </div>
               <div>
@@ -452,6 +380,19 @@ export function BookingViewPageClient({
                 </p>
               </div>
             </div>
+            {booking.meetingAssist.note && (
+              <>
+                <Separator className="my-4" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Note
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {booking.meetingAssist.note}
+                  </p>
+                </div>
+              </>
+            )}
             <Separator className="my-4" />
             <h4 className="font-semibold text-md mb-2">Arrival Details</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -532,6 +473,11 @@ export function BookingViewPageClient({
                     <p>
                       <strong>Pickup:</strong> {guide.pickupHotelLocation}
                     </p>
+                    {guide.note && (
+                      <p>
+                        <strong>Note:</strong> {guide.note}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <h6 className="font-semibold text-md mb-2 mt-3">

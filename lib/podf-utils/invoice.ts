@@ -35,6 +35,13 @@ interface InvoiceData {
     exchangeRate?: number;
     status: string;
   }>;
+  nileCruises: Array<{
+    name: string;
+    totalAmount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
+    status: string;
+  }>;
   domesticFlights: Array<{
     details: string;
     cost: number;
@@ -228,6 +235,24 @@ const generateInvoicePDFBlob = (invoice: InvoiceData): Blob => {
       head: [["City", "Accommodation", "Amount (EGP)", "Status"]],
       body: invoice.accommodation.map((item) => [
         item.city,
+        item.name,
+        formatCurrency(
+          convertToEGP(item.totalAmount, item.currency, item.exchangeRate)
+        ),
+        item.status,
+      ]),
+      theme: "striped",
+      headStyles: { fillColor: "#4A5568", font: "Amiri" },
+    });
+    y = (doc as any).lastAutoTable.finalY + 5;
+  }
+
+  // Nile Cruises
+  if (invoice.nileCruises && invoice.nileCruises.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      head: [["Nile Cruise", "Amount (EGP)", "Status"]],
+      body: invoice.nileCruises.map((item) => [
         item.name,
         formatCurrency(
           convertToEGP(item.totalAmount, item.currency, item.exchangeRate)

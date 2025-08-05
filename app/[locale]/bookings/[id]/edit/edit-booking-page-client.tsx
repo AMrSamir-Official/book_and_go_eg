@@ -1,3 +1,4 @@
+// المسار: /app/[locale]/bookings/edit/[id]/EditBookingPageClient.tsx
 "use client";
 
 import { updateBookingAction } from "@/actions/bookingActions";
@@ -37,7 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useTransition } from "react";
+import { useEffect, useMemo, useTransition } from "react";
 import {
   Control,
   Controller,
@@ -45,6 +46,7 @@ import {
   UseFieldArrayRemove,
   useForm,
   UseFormRegister,
+  UseFormSetValue,
 } from "react-hook-form";
 
 // --- Interfaces ---
@@ -72,6 +74,7 @@ interface GuideItemProps {
   guideIndex: number;
   control: Control<BookingTypes>;
   register: UseFormRegister<BookingTypes>;
+  setValue: UseFormSetValue<BookingTypes>;
   removeGuide: UseFieldArrayRemove;
   guideFields: { id: string }[];
   cities: DataItem[];
@@ -85,6 +88,7 @@ function GuideItem({
   guideIndex,
   control,
   register,
+  setValue,
   removeGuide,
   guideFields,
   cities,
@@ -194,11 +198,10 @@ function GuideItem({
           <Label className="text-base font-medium">No. of Pax - Adults:</Label>
           <Input
             type="number"
-            {...register(`guides.${guideIndex}.paxAdults`, {
-              valueAsNumber: true,
-            })}
+            {...register(`guides.${guideIndex}.paxAdults`)}
             placeholder="Number of adults"
-            className="mt-1"
+            className="mt-1 bg-muted"
+            readOnly
           />
         </div>
         <div>
@@ -207,13 +210,21 @@ function GuideItem({
           </Label>
           <Input
             type="number"
-            {...register(`guides.${guideIndex}.paxChildren`, {
-              valueAsNumber: true,
-            })}
+            {...register(`guides.${guideIndex}.paxChildren`)}
             placeholder="Number of children"
-            className="mt-1"
+            className="mt-1 bg-muted"
+            readOnly
           />
         </div>
+      </div>
+      <div className="mb-6">
+        <Label className="text-base font-medium">Note:</Label>
+        <Textarea
+          {...register(`guides.${guideIndex}.note`)}
+          placeholder="Any special notes for this guide..."
+          className="mt-1"
+          rows={2}
+        />
       </div>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -253,10 +264,7 @@ function GuideItem({
                   <TableCell>
                     <Input
                       type="number"
-                      {...register(
-                        `guides.${guideIndex}.days.${dayIndex}.day`,
-                        { valueAsNumber: true }
-                      )}
+                      {...register(`guides.${guideIndex}.days.${dayIndex}.day`)}
                       defaultValue={dayIndex + 1}
                       className="w-20"
                     />
@@ -323,13 +331,10 @@ export function EditBookingPageClient({
   booking: BookingTypes;
   initialData: BookingDataProps;
 }) {
-  console.log("booking :", booking);
-  console.log("initialData :", initialData);
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  // --- Extract data from props ---
   const {
     cities = [],
     hotels = [],
@@ -342,7 +347,6 @@ export function EditBookingPageClient({
     internationalAirlines = [],
   } = initialData || {};
 
-  // --- Process hotel data to group by city ---
   const hotelsByCity = useMemo(() => {
     if (!hotels || hotels.length === 0) return {};
     return hotels.reduce(
@@ -404,6 +408,37 @@ export function EditBookingPageClient({
     append: appendGuide,
     remove: removeGuide,
   } = useFieldArray({ control, name: "guides" });
+  const {
+    fields: guestFields,
+    append: appendGuest,
+    remove: removeGuest,
+  } = useFieldArray({ control, name: "guests" });
+
+  // Watch master fields and apply changes to all dependent fields
+  const paxCount = watch("paxCount");
+  const childCount = watch("childCount");
+
+  useEffect(() => {
+    if (paxCount !== undefined) {
+      const numValue = Number(paxCount);
+      setValue("cairoTransfer.paxCount", numValue);
+      setValue("aswanLuxorTransfer.paxCount", numValue);
+      setValue("meetingAssist.paxAdults", numValue);
+      guideFields.forEach((_, index) => {
+        setValue(`guides.${index}.paxAdults`, numValue);
+      });
+    }
+  }, [paxCount, guideFields, setValue]);
+
+  useEffect(() => {
+    if (childCount !== undefined) {
+      const numValue = Number(childCount);
+      setValue("meetingAssist.paxChildren", numValue);
+      guideFields.forEach((_, index) => {
+        setValue(`guides.${index}.paxChildren`, numValue);
+      });
+    }
+  }, [childCount, guideFields, setValue]);
 
   const onSubmit = (data: BookingTypes) => {
     startTransition(async () => {
@@ -452,12 +487,7 @@ export function EditBookingPageClient({
                   <Label htmlFor="fileNumber">File Number:</Label>
                   <Input
                     id="fileNumber"
-                    {...register(
-                      "fileNumber"
-                      //   , {
-                      //   required: "File number is required",
-                      // }
-                    )}
+                    {...register("fileNumber")}
                     className="mt-1"
                   />
                   {errors.fileNumber && (
@@ -498,13 +528,9 @@ export function EditBookingPageClient({
                     render={({ field }) => (
                       <Select
                         value={field.value?.toString()}
-                        onValueChange={(value) => {
-                          const numValue = parseInt(value, 10);
-                          field.onChange(numValue);
-                          setValue("cairoTransfer.paxCount", numValue);
-                          setValue("aswanLuxorTransfer.paxCount", numValue);
-                          setValue("meetingAssist.paxCount", numValue);
-                        }}
+                        onValueChange={(value) =>
+                          field.onChange(parseInt(value, 10))
+                        }
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select pax count" />
@@ -553,12 +579,7 @@ export function EditBookingPageClient({
                   <Input
                     id="arrivalDate"
                     type="date"
-                    {...register(
-                      "arrivalDate"
-                      //   , {
-                      //   required: "Arrival date is required",
-                      // }
-                    )}
+                    {...register("arrivalDate")}
                     className="mt-1"
                   />
                 </div>
@@ -567,12 +588,7 @@ export function EditBookingPageClient({
                   <Input
                     id="departureDate"
                     type="date"
-                    {...register(
-                      "departureDate"
-                      //   , {
-                      //   required: "Departure date is required",
-                      // }
-                    )}
+                    {...register("departureDate")}
                     className="mt-1"
                   />
                 </div>
@@ -681,7 +697,6 @@ export function EditBookingPageClient({
                     </div>
                   </div>
                 </div>
-
                 <div>
                   <Label className="text-base font-medium">
                     Departure Flight Details:
@@ -738,7 +753,6 @@ export function EditBookingPageClient({
                   </div>
                 </div>
               </div>
-
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">
@@ -882,12 +896,114 @@ export function EditBookingPageClient({
               </div>
             </CardContent>
           </Card>
-
-          {/* 2. Accommodation */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
-                <Hotel className="mr-2 h-6 w-6" /> 2. Accommodation
+                <Users className="mr-2 h-6 w-6" />
+                2. Guest Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {guestFields.map((field, index) => (
+                <div key={field.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h5 className="font-medium">Guest {index + 1}</h5>
+                    {guestFields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeGuest(index)}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm">Title</Label>
+                      <Controller
+                        name={`guests.${index}.title`}
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select title" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Mr">Mr.</SelectItem>
+                              <SelectItem value="Mrs">Mrs.</SelectItem>
+                              <SelectItem value="Ms">Ms.</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">First Name</Label>
+                      <Input
+                        {...register(`guests.${index}.firstName`)}
+                        placeholder="First Name"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Last Name</Label>
+                      <Input
+                        {...register(`guests.${index}.lastName`)}
+                        placeholder="Last Name"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Type</Label>
+                      <Controller
+                        name={`guests.${index}.type`}
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="adult">Adult</SelectItem>
+                              <SelectItem value="child">Child</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4"
+                onClick={() =>
+                  appendGuest({
+                    title: "Mr",
+                    firstName: "",
+                    lastName: "",
+                    type: "adult",
+                  })
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Guest
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <Hotel className="mr-2 h-6 w-6" /> 3. Accommodation
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1043,7 +1159,6 @@ export function EditBookingPageClient({
                   );
                 })}
               </div>
-
               <Separator />
               <div>
                 <Label className="text-base font-medium">Nile Cruise</Label>
@@ -1118,13 +1233,11 @@ export function EditBookingPageClient({
               </div>
             </CardContent>
           </Card>
-
-          {/* 3. Itinerary & Cities */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
                 <MapPin className="mr-2 h-6 w-6" />
-                3. Itinerary & Cities
+                4. Itinerary & Cities
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1271,13 +1384,11 @@ export function EditBookingPageClient({
               </div>
             </CardContent>
           </Card>
-
-          {/* 4. Transportation */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
                 <Plane className="mr-2 h-6 w-6" />
-                4. Transportation
+                5. Transportation
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -1287,9 +1398,9 @@ export function EditBookingPageClient({
                   <div>
                     <Label className="text-base font-medium">No. of Pax:</Label>
                     <Input
-                      value={watch("paxCount")}
+                      {...register("cairoTransfer.paxCount")}
                       readOnly
-                      className="mt-1 "
+                      className="mt-1 bg-muted"
                     />
                   </div>
                   <div>
@@ -1462,9 +1573,9 @@ export function EditBookingPageClient({
                   <div>
                     <Label className="text-base font-medium">No. of Pax:</Label>
                     <Input
-                      value={watch("paxCount")}
+                      {...register("aswanLuxorTransfer.paxCount")}
                       readOnly
-                      className="mt-1 "
+                      className="mt-1 bg-muted"
                     />
                   </div>
                   <div>
@@ -1601,20 +1712,36 @@ export function EditBookingPageClient({
               </div>
             </CardContent>
           </Card>
-
-          {/* 5. Meeting & Assist */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
                 <Users className="mr-2 h-6 w-6" />
-                5. Meeting & Assist
+                6. Meeting & Assist
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-base font-medium">No. of Pax:</Label>
-                  <Input value={watch("paxCount")} readOnly className="mt-1 " />
+                  <Label className="text-base font-medium">
+                    No. of Pax - Adults:
+                  </Label>
+                  <Input
+                    type="number"
+                    {...register("meetingAssist.paxAdults")}
+                    className="mt-1 bg-muted"
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-base font-medium">
+                    No. of Pax - Children:
+                  </Label>
+                  <Input
+                    type="number"
+                    {...register("meetingAssist.paxChildren")}
+                    className="mt-1 bg-muted"
+                    readOnly
+                  />
                 </div>
                 <div>
                   <Label className="text-base font-medium">Name:</Label>
@@ -1716,15 +1843,22 @@ export function EditBookingPageClient({
                   )}
                 />
               </div>
+              <div>
+                <Label className="text-base font-medium">Note:</Label>
+                <Textarea
+                  {...register("meetingAssist.note")}
+                  placeholder="Any special notes for the meeting and assist service..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
-
-          {/* 6. Guide Details */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
                 <Users className="mr-2 h-6 w-6" />
-                6. Guide Details
+                7. Guide Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -1735,6 +1869,7 @@ export function EditBookingPageClient({
                   guideIndex={guideIndex}
                   control={control}
                   register={register}
+                  setValue={setValue}
                   removeGuide={removeGuide}
                   guideFields={guideFields}
                   cities={cities}
@@ -1750,9 +1885,10 @@ export function EditBookingPageClient({
                     city: "",
                     guideName: "",
                     guestNationality: "",
-                    paxAdults: 0,
-                    paxChildren: 0,
+                    paxAdults: paxCount || 0,
+                    paxChildren: childCount || 0,
                     pickupHotelLocation: "",
+                    note: "",
                     days: [
                       { day: 1, date: "", time: "", include: "", exclude: "" },
                     ],
@@ -1763,8 +1899,6 @@ export function EditBookingPageClient({
               </Button>
             </CardContent>
           </Card>
-
-          {/* Submit Button */}
           <div className="flex justify-center">
             <Button
               type="submit"
@@ -1776,7 +1910,8 @@ export function EditBookingPageClient({
                 "Updating..."
               ) : (
                 <>
-                  <Save className="mr-2 h-5 w-5" /> Update Booking
+                  {" "}
+                  <Save className="mr-2 h-5 w-5" /> Update Booking{" "}
                 </>
               )}
             </Button>

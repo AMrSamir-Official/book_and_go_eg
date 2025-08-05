@@ -68,6 +68,14 @@ export interface InvoiceFormData {
     paymentDate: string;
     status: "pending" | "paid";
   }>;
+  nileCruises: Array<{
+    name: string;
+    totalAmount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
+    paymentDate: string;
+    status: "pending" | "paid";
+  }>;
   domesticFlights: Array<{
     details: string;
     cost: number;
@@ -140,6 +148,11 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
       sum + convertToEGP(item?.totalAmount, item?.currency, item?.exchangeRate),
     0
   );
+  const totalNileCruises = (formValues.nileCruises || []).reduce(
+    (sum, item) =>
+      sum + convertToEGP(item?.totalAmount, item?.currency, item?.exchangeRate),
+    0
+  );
   const totalDomesticFlights = (formValues.domesticFlights || []).reduce(
     (sum, item) =>
       sum + convertToEGP(item?.cost, item?.currency, item?.exchangeRate),
@@ -162,12 +175,19 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
   );
   const grandTotalExpensesEGP =
     totalAccommodation +
+    totalNileCruises +
     totalDomesticFlights +
     totalEntranceTickets +
     totalGuide +
     totalTransportation;
   const restProfitEGP = grandTotalIncomeEGP - grandTotalExpensesEGP;
   const pendingAccommodation = (formValues.accommodation || [])
+    .filter((i) => i.status === "pending")
+    .reduce(
+      (s, i) => s + convertToEGP(i.totalAmount, i.currency, i.exchangeRate),
+      0
+    );
+  const pendingNileCruises = (formValues.nileCruises || [])
     .filter((i) => i.status === "pending")
     .reduce(
       (s, i) => s + convertToEGP(i.totalAmount, i.currency, i.exchangeRate),
@@ -187,6 +207,7 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
     );
   const totalOwedToSuppliers =
     pendingAccommodation +
+    pendingNileCruises +
     pendingFlights +
     pendingGuides +
     pendingTransportation;
@@ -196,6 +217,7 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
     restProfitEGP,
     totalExtraIncome,
     totalAccommodation,
+    totalNileCruises,
     totalDomesticFlights,
     totalEntranceTickets,
     totalGuide,
@@ -222,6 +244,7 @@ export function EditInvoicePageClient({
     guides = [],
     hotels = [],
     supplier = [],
+    nileCruises = [],
     cities = [],
   } = initialData || {};
   const t = useTranslations("invoices");
@@ -241,6 +264,10 @@ export function EditInvoicePageClient({
       date: formatDateForInput(item.date),
     })),
     accommodation: invoice.accommodation.map((item) => ({
+      ...item,
+      paymentDate: formatDateForInput(item.paymentDate),
+    })),
+    nileCruises: (invoice.nileCruises || []).map((item) => ({
       ...item,
       paymentDate: formatDateForInput(item.paymentDate),
     })),
@@ -336,6 +363,11 @@ export function EditInvoicePageClient({
     append: appendAccommodation,
     remove: removeAccommodation,
   } = useFieldArray({ control, name: "accommodation" });
+  const {
+    fields: nileCruiseFields,
+    append: appendNileCruise,
+    remove: removeNileCruise,
+  } = useFieldArray({ control, name: "nileCruises" });
   const {
     fields: flightFields,
     append: appendFlight,
@@ -1090,6 +1122,63 @@ export function EditInvoicePageClient({
                   <span className="font-semibold">Total Accommodation:</span>
                   <div className="text-right font-semibold text-lg">
                     {totals.totalAccommodation.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "EGP",
+                    })}
+                  </div>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap">
+                  <h4 className="text-lg font-semibold">2- Nile Cruises</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      appendNileCruise({
+                        name: "",
+                        totalAmount: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
+                        paymentDate: "",
+                        status: "pending",
+                      })
+                    }
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add Nile Cruise
+                  </Button>
+                </div>
+                {nileCruiseFields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="border rounded-lg p-4 space-y-4"
+                  >
+                    {/* UI for a single Nile Cruise item (name, amount, currency, etc.) */}
+                    {/* This structure is almost identical to the Accommodation item */}
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium">
+                        Nile Cruise Item {index + 1}
+                      </h5>
+                      {nileCruiseFields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeNileCruise(index)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {/* ... (Copy the fields from your previous request here for name, totalAmount, currency, etc.) ... */}
+                  </div>
+                ))}
+                <div className="bg-muted p-4 rounded-lg flex justify-between items-center">
+                  <span className="font-semibold">Total Nile Cruises:</span>
+                  <div className="text-right font-semibold text-lg">
+                    {totals.totalNileCruises.toLocaleString("en-US", {
                       style: "currency",
                       currency: "EGP",
                     })}

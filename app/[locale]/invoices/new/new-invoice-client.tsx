@@ -74,6 +74,14 @@ export interface InvoiceFormData {
     paymentDate: string;
     status: "pending" | "paid";
   }>;
+  nileCruises: Array<{
+    name: string;
+    totalAmount: number;
+    currency: "EGP" | "USD";
+    exchangeRate?: number;
+    paymentDate: string;
+    status: "pending" | "paid";
+  }>;
   domesticFlights: Array<{
     details: string;
     cost: number;
@@ -146,6 +154,11 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
       sum + convertToEGP(item?.totalAmount, item?.currency, item?.exchangeRate),
     0
   );
+  const totalNileCruises = (formValues.nileCruises || []).reduce(
+    (sum, item) =>
+      sum + convertToEGP(item?.totalAmount, item?.currency, item?.exchangeRate),
+    0
+  );
   const totalDomesticFlights = (formValues.domesticFlights || []).reduce(
     (sum, item) =>
       sum + convertToEGP(item?.cost, item?.currency, item?.exchangeRate),
@@ -168,12 +181,19 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
   );
   const grandTotalExpensesEGP =
     totalAccommodation +
+    totalNileCruises +
     totalDomesticFlights +
     totalEntranceTickets +
     totalGuide +
     totalTransportation;
   const restProfitEGP = grandTotalIncomeEGP - grandTotalExpensesEGP;
   const pendingAccommodation = (formValues.accommodation || [])
+    .filter((i) => i.status === "pending")
+    .reduce(
+      (s, i) => s + convertToEGP(i.totalAmount, i.currency, i.exchangeRate),
+      0
+    );
+  const pendingNileCruises = (formValues.nileCruises || [])
     .filter((i) => i.status === "pending")
     .reduce(
       (s, i) => s + convertToEGP(i.totalAmount, i.currency, i.exchangeRate),
@@ -193,6 +213,7 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
     );
   const totalOwedToSuppliers =
     pendingAccommodation +
+    pendingNileCruises +
     pendingFlights +
     pendingGuides +
     pendingTransportation;
@@ -202,6 +223,7 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
     restProfitEGP,
     totalExtraIncome,
     totalAccommodation,
+    totalNileCruises,
     totalDomesticFlights,
     totalEntranceTickets,
     totalGuide,
@@ -226,6 +248,7 @@ export function NewInvoicePageClient({
     hotels = [],
     supplier = [],
     cities = [],
+    nileCruises = [],
   } = initialData || {};
   console.log("initialData : ", initialData);
   const t = useTranslations("invoices");
@@ -272,6 +295,7 @@ export function NewInvoicePageClient({
         },
       ],
       accommodation: [],
+      nileCruises: [],
       domesticFlights: [],
       entranceTickets: [],
       guide: [],
@@ -360,6 +384,11 @@ export function NewInvoicePageClient({
     append: appendAccommodation,
     remove: removeAccommodation,
   } = useFieldArray({ control, name: "accommodation" });
+  const {
+    fields: nileCruiseFields,
+    append: appendNileCruise,
+    remove: removeNileCruise,
+  } = useFieldArray({ control, name: "nileCruises" });
   const {
     fields: flightFields,
     append: appendFlight,
@@ -1002,7 +1031,10 @@ export function NewInvoicePageClient({
                               </SelectTrigger>
                               <SelectContent>
                                 {hotels.map((hotel: any) => (
-                                  <SelectItem key={hotel.id} value={hotel.name}>
+                                  <SelectItem
+                                    key={hotel.id || hotel._id}
+                                    value={hotel.name}
+                                  >
                                     {hotel.name}
                                   </SelectItem>
                                 ))}
@@ -1122,8 +1154,190 @@ export function NewInvoicePageClient({
               </div>
               <Separator />
               <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap">
+                  <h4 className="text-lg font-semibold">2- Nile Cruises</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      appendNileCruise({
+                        name: "",
+                        totalAmount: 0,
+                        currency: "EGP",
+                        exchangeRate: 0,
+                        paymentDate: "",
+                        status: "pending",
+                      })
+                    }
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add Nile Cruise
+                  </Button>
+                </div>
+                {nileCruiseFields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="border rounded-lg p-4 space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium">
+                        Nile Cruise Item {index + 1}
+                      </h5>
+                      {nileCruiseFields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeNileCruise(index)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+                      <div className="md:col-span-2">
+                        <Label>Nile Cruise Name</Label>
+                        <Controller
+                          name={`nileCruises.${index}.name`}
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Nile Cruise" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {nileCruises.map((cruise: any) => (
+                                  <SelectItem
+                                    key={cruise._id}
+                                    value={cruise.name}
+                                  >
+                                    {cruise.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label>Total Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...register(`nileCruises.${index}.totalAmount`, {
+                            valueAsNumber: true,
+                          })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label>Currency</Label>
+                        <Controller
+                          name={`nileCruises.${index}.currency`}
+                          control={control}
+                          render={({ field }) => (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex items-center space-x-4 pt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="EGP"
+                                  id={`cruise-egp-${index}`}
+                                />
+                                <Label htmlFor={`cruise-egp-${index}`}>
+                                  EGP
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="USD"
+                                  id={`cruise-usd-${index}`}
+                                />
+                                <Label htmlFor={`cruise-usd-${index}`}>
+                                  USD
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
+                      {watch(`nileCruises.${index}.currency`) === "USD" && (
+                        <div>
+                          <Label>Exchange Rate</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(`nileCruises.${index}.exchangeRate`, {
+                              valueAsNumber: true,
+                            })}
+                            placeholder="e.g., 47.50"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Payment Date</Label>
+                        <Input
+                          type="date"
+                          {...register(`nileCruises.${index}.paymentDate`)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Controller
+                          name={`nileCruises.${index}.status`}
+                          control={control}
+                          render={({ field }) => (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex items-center space-x-4 pt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`cruise-pending-${index}`}
+                                />
+                                <Label htmlFor={`cruise-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`cruise-paid-${index}`}
+                                />
+                                <Label htmlFor={`cruise-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="bg-muted p-4 rounded-lg flex justify-between items-center">
+                  <span className="font-semibold">Total Nile Cruises:</span>
+                  <div className="text-right font-semibold text-lg">
+                    {totals.totalNileCruises.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "EGP",
+                    })}
+                  </div>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-semibold">2- Domestic Flight</h4>
+                  <h4 className="text-lg font-semibold">3- Domestic Flight</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1284,7 +1498,7 @@ export function NewInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">3- Entrance Tickets</h4>
+                  <h4 className="text-lg font-semibold">4- Entrance Tickets</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1432,7 +1646,7 @@ export function NewInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">4- Guide</h4>
+                  <h4 className="text-lg font-semibold">5- Guide</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1634,7 +1848,7 @@ export function NewInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">5- Transportation</h4>
+                  <h4 className="text-lg font-semibold">6- Transportation</h4>
                   <Button
                     type="button"
                     variant="outline"

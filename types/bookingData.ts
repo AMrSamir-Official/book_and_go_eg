@@ -1,6 +1,7 @@
 export interface BookingTypes {
   id?: string;
-
+  _id?: string;
+  createdAt: string;
   fileNumber: string;
   vendor: string;
   paxCount: number;
@@ -15,6 +16,12 @@ export interface BookingTypes {
     airlineName: string;
     flightNo: string;
   };
+  guests?: {
+    firstName: string;
+    lastName: string;
+    type: "adult" | "child";
+    title: "Mr" | "Mrs" | "Ms";
+  }[];
   departureFlight: {
     date: string;
     time: string;
@@ -77,8 +84,10 @@ export interface BookingTypes {
     }>;
   };
   meetingAssist: {
-    paxCount: number;
+    paxAdults: number;
+    paxChildren?: number;
     name: string;
+    note?: string;
     driver: {
       name: string;
       contact: string;
@@ -91,13 +100,16 @@ export interface BookingTypes {
     };
     nationality: string;
   };
+
   guides: Array<{
+    _id?: string;
     city: string;
     guideName: string;
     guestNationality: string;
     paxAdults: number;
     paxChildren: number;
     pickupHotelLocation: string;
+    note?: string;
     days: Array<{
       day: number;
       date: string;

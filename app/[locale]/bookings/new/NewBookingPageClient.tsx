@@ -38,7 +38,9 @@ import {
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useTransition } from "react";
+// START: MODIFICATION - 1. استيراد useEffect
+import { useEffect, useMemo, useRef, useTransition } from "react";
+// END: MODIFICATION - 1
 import {
   Control,
   useFieldArray,
@@ -69,8 +71,6 @@ interface BookingDataProps {
   domesticAirlines: DataItem[];
   internationalAirlines: DataItem[];
 }
-
-// واجهة تصف شكل بيانات النموذج
 
 // واجهة لمكون المرشد الفرعي
 interface GuideItemProps {
@@ -145,6 +145,7 @@ function GuideItem({
             </SelectContent>
           </Select>
         </div>
+
         <div>
           <Label className="text-base font-medium">Guide Name:</Label>
           <Select
@@ -207,6 +208,7 @@ function GuideItem({
             {...register(`guides.${guideIndex}.paxAdults`)}
             placeholder="Number of adults"
             className="mt-1"
+            readOnly
           />
         </div>
 
@@ -219,10 +221,19 @@ function GuideItem({
             {...register(`guides.${guideIndex}.paxChildren`)}
             placeholder="Number of children"
             className="mt-1"
+            readOnly
           />
         </div>
       </div>
-
+      <div className="mb-6">
+        <Label className="text-base font-medium">Note:</Label>
+        <Textarea
+          {...register(`guides.${guideIndex}.note`)}
+          placeholder="Any special notes for this guide..."
+          className="mt-1"
+          rows={2}
+        />
+      </div>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-base font-medium">Daily Schedule</Label>
@@ -380,6 +391,7 @@ export function NewBookingPageClient({
       fileNumber: `BG-${new Date().getFullYear()}-${String(Date.now()).slice(
         -3
       )}`,
+      guests: [{ firstName: "", lastName: "", type: "adult", title: "Mr" }],
       vendor: "",
       paxCount: 2,
       childCount: 0,
@@ -419,7 +431,9 @@ export function NewBookingPageClient({
         days: [{ day: 1, date: "", city: "", description: "" }],
       },
       meetingAssist: {
-        paxCount: 2,
+        paxAdults: 2,
+        paxChildren: 0,
+        note: "",
         name: "",
         driver: { name: "", contact: "" },
         arrivalFlight: { date: "", time: "", airlineName: "", flightNo: "" },
@@ -430,9 +444,10 @@ export function NewBookingPageClient({
           city: "",
           guideName: "",
           guestNationality: "",
-          paxAdults: 0,
-          paxChildren: 0,
+          paxAdults: 2, // قيمة مبدئية
+          paxChildren: 0, // قيمة مبدئية
           pickupHotelLocation: "",
+          note: "",
           days: [{ day: 1, date: "", time: "", include: "", exclude: "" }],
         },
       ],
@@ -470,6 +485,47 @@ export function NewBookingPageClient({
     append: appendGuide,
     remove: removeGuide,
   } = useFieldArray({ control, name: "guides" });
+  const {
+    fields: guestFields,
+    append: appendGuest,
+    remove: removeGuest,
+  } = useFieldArray({ control, name: "guests" });
+
+  // START: MODIFICATION - 2. إضافة مراقبة و useEffects
+  // مراقبة الحقول الرئيسية لعدد البالغين والأطفال
+  const paxCount = watch("paxCount");
+  const childCount = watch("childCount");
+
+  // Effect لمزامنة عدد البالغين
+  useEffect(() => {
+    if (paxCount !== undefined) {
+      const numValue = Number(paxCount);
+      // تحديث الأقسام الأخرى
+      setValue("cairoTransfer.paxCount", numValue);
+      setValue("aswanLuxorTransfer.paxCount", numValue);
+      setValue("meetingAssist.paxAdults", numValue);
+
+      // تحديث كل المرشدين الحاليين
+      guideFields.forEach((_, index) => {
+        setValue(`guides.${index}.paxAdults`, numValue);
+      });
+    }
+  }, [paxCount, guideFields, setValue]);
+
+  // Effect لمزامنة عدد الأطفال
+  useEffect(() => {
+    if (childCount !== undefined) {
+      const numValue = Number(childCount);
+      // تحديث الأقسام الأخرى
+      setValue("meetingAssist.paxChildren", numValue);
+
+      // تحديث كل المرشدين الحاليين
+      guideFields.forEach((_, index) => {
+        setValue(`guides.${index}.paxChildren`, numValue);
+      });
+    }
+  }, [childCount, guideFields, setValue]);
+  // END: MODIFICATION - 2
 
   const onSubmit = (data: BookingTypes) => {
     startTransition(async () => {
@@ -532,8 +588,8 @@ export function NewBookingPageClient({
                       id="fileNumber"
                       {...register(
                         "fileNumber"
-                        //   , {
-                        //   required: "File number is required",
+                        //  , {
+                        //  required: "File number is required",
                         // }
                       )}
                       className="mt-1"
@@ -572,13 +628,12 @@ export function NewBookingPageClient({
                     </Label>
                     <Select
                       value={watch("paxCount")?.toString()}
+                      // START: MODIFICATION - 3. تبسيط onValueChange
                       onValueChange={(value) => {
                         const numValue = Number.parseInt(value);
                         setValue("paxCount", numValue);
-                        setValue("cairoTransfer.paxCount", numValue);
-                        setValue("aswanLuxorTransfer.paxCount", numValue);
-                        setValue("meetingAssist.paxCount", numValue);
                       }}
+                      // END: MODIFICATION - 3
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select pax count" />
@@ -599,13 +654,15 @@ export function NewBookingPageClient({
                       htmlFor="childCount"
                       className="text-base font-medium"
                     >
-                      Child:
+                      No. of Pax Child:
                     </Label>
                     <Select
                       value={watch("childCount")?.toString()}
+                      // START: MODIFICATION - 4. تبسيط onValueChange
                       onValueChange={(value) => {
                         setValue("childCount", Number.parseInt(value));
                       }}
+                      // END: MODIFICATION - 4
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select child count" />
@@ -631,8 +688,8 @@ export function NewBookingPageClient({
                       type="date"
                       {...register(
                         "arrivalDate"
-                        //   , {
-                        //   required: "Arrival date is required",
+                        //  , {
+                        //  required: "Arrival date is required",
                         // }
                       )}
                       className="mt-1"
@@ -652,8 +709,8 @@ export function NewBookingPageClient({
                       {...register(
                         "departureDate"
 
-                        //,   {
-                        //   required: "Departure date is required",
+                        //,  {
+                        //  required: "Departure date is required",
                         // }
                       )}
                       className="mt-1"
@@ -952,7 +1009,120 @@ export function NewBookingPageClient({
                 </div>
               </CardContent>
             </Card>
+            {/* 2. Guest Information (NEW SECTION) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-xl">
+                  <Users className="mr-2 h-6 w-6" />
+                  2. Guest Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* We will map over the guestFields from useFieldArray */}
+                {guestFields.map((field, index) => (
+                  <div key={field.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="font-medium">Guest {index + 1}</h5>
+                      {/* Show remove button only if there is more than one guest */}
+                      {guestFields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeGuest(index)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Title Select */}
+                      <div>
+                        <Label className="text-sm">Title</Label>
+                        <Select
+                          onValueChange={(value) =>
+                            setValue(
+                              `guests.${index}.title`,
+                              value as "Mr" | "Mrs" | "Ms"
+                            )
+                          }
+                          defaultValue={field.title}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select title" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Mr">Mr.</SelectItem>
+                            <SelectItem value="Mrs">Mrs.</SelectItem>
+                            <SelectItem value="Ms">Ms.</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
+                      {/* First Name Input */}
+                      <div>
+                        <Label className="text-sm">First Name</Label>
+                        <Input
+                          {...register(`guests.${index}.firstName`)}
+                          placeholder="First Name"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      {/* Last Name Input */}
+                      <div>
+                        <Label className="text-sm">Last Name</Label>
+                        <Input
+                          {...register(`guests.${index}.lastName`)}
+                          placeholder="Last Name"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      {/* Type Select (Adult/Child) */}
+                      <div>
+                        <Label className="text-sm">Type</Label>
+                        <Select
+                          onValueChange={(value) =>
+                            setValue(
+                              `guests.${index}.type`,
+                              value as "adult" | "child"
+                            )
+                          }
+                          defaultValue={field.type}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="adult">Adult</SelectItem>
+                            <SelectItem value="child">Child</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Button to add a new guest */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() =>
+                    appendGuest({
+                      title: "Mr",
+                      firstName: "",
+                      lastName: "",
+                      type: "adult",
+                    })
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Guest
+                </Button>
+              </CardContent>
+            </Card>
             {/* 2. Accommodation */}
             <Card>
               <CardHeader>
@@ -1341,6 +1511,7 @@ export function NewBookingPageClient({
                         No. of Pax:
                       </Label>
                       <Select
+                        disabled
                         value={watch("cairoTransfer.paxCount")?.toString()}
                         onValueChange={(value) =>
                           setValue(
@@ -1528,6 +1699,7 @@ export function NewBookingPageClient({
                         No. of Pax:
                       </Label>
                       <Select
+                        disabled
                         value={watch("aswanLuxorTransfer.paxCount")?.toString()}
                         onValueChange={(value) =>
                           setValue(
@@ -1687,14 +1859,17 @@ export function NewBookingPageClient({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-base font-medium">No. of Pax:</Label>
+                    <Label className="text-base font-medium">
+                      No. of Pax: Adults
+                    </Label>
                     <Select
-                      value={watch("meetingAssist.paxCount")?.toString()}
+                      disabled
+                      value={watch("meetingAssist.paxAdults")?.toString()}
                       onValueChange={(value) =>
                         setValue(
-                          "meetingAssist.paxCount",
+                          "meetingAssist.paxAdults",
                           Number.parseInt(value)
                         )
                       }
@@ -1712,6 +1887,17 @@ export function NewBookingPageClient({
                         )}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div>
+                    <Label className="text-base font-medium">
+                      No. of Pax - Children:
+                    </Label>
+                    <Input
+                      type="number"
+                      readOnly
+                      {...register("meetingAssist.paxChildren")}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <Label className="text-base font-medium">Name:</Label>
@@ -1844,14 +2030,16 @@ export function NewBookingPageClient({
                 <Button
                   type="button"
                   variant="outline"
+                  // START: MODIFICATION - 5. تحديث القيم عند إضافة مرشد جديد
                   onClick={() =>
                     appendGuide({
                       city: "",
                       guideName: "",
                       guestNationality: "",
-                      paxAdults: 0,
-                      paxChildren: 0,
+                      paxAdults: paxCount || 0, // استخدام القيمة المراقبة
+                      paxChildren: childCount || 0, // استخدام القيمة المراقبة
                       pickupHotelLocation: "",
+                      note: "",
                       days: [
                         {
                           day: 1,
@@ -1863,6 +2051,7 @@ export function NewBookingPageClient({
                       ],
                     })
                   }
+                  // END: MODIFICATION - 5
                 >
                   <Plus className="mr-2 h-4 w-4" /> Add Guide
                 </Button>

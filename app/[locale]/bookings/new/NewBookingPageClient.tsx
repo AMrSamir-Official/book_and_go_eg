@@ -2000,6 +2000,15 @@ export function NewBookingPageClient({
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label className="text-base font-medium">Note:</Label>
+                  <Textarea
+                    {...register("meetingAssist.note")}
+                    placeholder="Any special notes for the meeting and assist service..."
+                    className="mt-1"
+                    rows={3}
+                  />
+                </div>
               </CardContent>
             </Card>
 

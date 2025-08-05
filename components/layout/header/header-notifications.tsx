@@ -99,7 +99,8 @@ export function HeaderNotifications() {
         ? match[1]
         : `Invoice #${notification.invoiceId.fileNumber}`;
       icon = <FileText className="h-4 w-4 text-green-500" />;
-      targetUrl = `/invoices/${notification.invoiceId._id}`;
+      targetUrl = `/invoices/${notification.invoiceId}`;
+      console.log("notification", notification);
     }
 
     return { type, title, icon, targetUrl };

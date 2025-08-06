@@ -44,7 +44,7 @@ export async function createBookingAction(data: BookingTypes) {
     },
     meetingAssist: {
       ...data.meetingAssist,
-      paxCount: Number(data.meetingAssist.paxCount) || 0,
+      paxCount: Number(data.meetingAssist.paxAdults) || 0,
     },
     guides: data.guides.map((g) => ({
       ...g,

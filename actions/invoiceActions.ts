@@ -8,7 +8,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 // سنقوم بتصدير هذا النوع من ملف العميل لاحقاً
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
 
 export async function createInvoiceAction(data: InvoiceFormData) {
   const token = (await cookies()).get("token")?.value;

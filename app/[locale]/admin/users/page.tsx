@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import "server-only";
 import { AdminUsersContent } from "./admin-users-content"; // افترضت أن هذا هو مسار المكون
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
 // app/admin/users/page.tsx
 
 async function getUsers() {

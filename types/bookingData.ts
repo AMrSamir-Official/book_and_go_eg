@@ -4,6 +4,7 @@ export interface BookingTypes {
   createdAt: string;
   fileNumber: string;
   vendor: string;
+  hasInvoice?: boolean;
   paxCount: number;
   childCount?: number;
   arrivalDate: string;

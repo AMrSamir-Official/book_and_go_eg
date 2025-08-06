@@ -113,18 +113,6 @@ export default function LoginPage() {
 
             <SubmitButton />
           </form>
-
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm font-medium mb-2">Demo Accounts:</p>
-            <div className="space-y-1 text-xs">
-              <p>
-                <strong>Admin:</strong> admin@bookandgo.com / admin123
-              </p>
-              <p>
-                <strong>User:</strong> user@bookandgo.com / user123
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

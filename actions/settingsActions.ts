@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
 const API_URL_app =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
 const API_URL = API_URL_app + "/settings";
 // UPDATED: The Resource type now includes the new models
 type Resource =

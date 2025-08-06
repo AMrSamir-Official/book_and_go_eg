@@ -75,7 +75,6 @@ export function BookingsClientPage({
   const [bookings, setBookings] = useState(initialBookings);
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
-  console.log(bookings);
 
   // This now filters the real data fetched from the server
   const filteredBookings = bookings.filter(
@@ -129,7 +128,6 @@ export function BookingsClientPage({
       printWindow.print();
     }
   };
-  console.log("filteredBookings : ", filteredBookings);
   return (
     <DashboardLayout>
       <div className="space-y-6">

@@ -3,6 +3,13 @@
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+
+import {
+  createDueAction,
+  deleteDueAction,
+  markDueAsPaidAction,
+  updateDueAction,
+} from "@/actions/duesActions"; // Import new server actions
 import {
   Card,
   CardContent,
@@ -34,7 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -46,7 +52,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/lib/auth";
-import { createApiClient } from "@/lib/axios";
 import {
   AlertTriangle,
   Calendar,
@@ -64,7 +69,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 // Data structure from your API
 interface ApiDue {
@@ -81,10 +86,9 @@ interface ApiDue {
   updatedAt: string;
 }
 
-// Type for display, including the 'overdue' status
-interface DisplayDue extends ApiDue {
+type DisplayDue = Omit<ApiDue, "status"> & {
   status: "Pending" | "Paid" | "overdue";
-}
+};
 
 // Data structure for the form
 interface DueFormData {
@@ -96,20 +100,20 @@ interface DueFormData {
   dueDate: string;
 }
 
-const apiClient = createApiClient();
-
-export function DuesPageClient() {
+// Remove useEffect, useCallback
+// ...
+// const apiClient = createApiClient(); // DELETE THIS LINE
+// ...
+export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
+  // Accept props
   const t = useTranslations("common");
   const { toast } = useToast();
   const { user, isLoading: isAuthLoading } = useAuthStore();
 
   // --- DEBUGGING LOG ---
-  console.log("[DuesPageClient] Store state:", { user, isAuthLoading });
-
-  const [dues, setDues] = useState<ApiDue[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [dues, setDues] = useState<ApiDue[]>(initialDues);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -128,67 +132,6 @@ export function DuesPageClient() {
   const [filterType, setFilterType] = useState<"all" | "receive" | "pay">(
     "all"
   );
-
-  const fetchDues = useCallback(async () => {
-    // --- DEBUGGING LOG ---
-    const tokenAtFetchTime = useAuthStore.getState().token;
-    console.log(
-      "[DuesPageClient] Attempting to fetch dues. Token at this moment:",
-      tokenAtFetchTime
-    );
-
-    if (!tokenAtFetchTime) {
-      console.error("STOP! Token is missing right before API call.");
-      toast({
-        title: "Authentication Error",
-        description: "User token is missing. Cannot fetch data.",
-        variant: "destructive",
-      });
-      setIsDataLoading(false);
-      return;
-    }
-
-    setIsDataLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get("/dues");
-      console.log("[DuesPageClient] API response received:", response.data);
-      setDues(response.data.data || []);
-    } catch (err) {
-      console.error("[DuesPageClient] API fetch failed:", err);
-      setError("Failed to fetch dues. Please try again later.");
-      toast({
-        title: "Error",
-        description: "Could not fetch dues. Check console for details.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    // --- DEBUGGING LOG ---
-    console.log(
-      `[DuesPageClient] useEffect triggered. isAuthLoading: ${isAuthLoading}, User role: ${user?.role}`
-    );
-
-    if (isAuthLoading) {
-      console.log("[DuesPageClient] Auth is loading, waiting...");
-      return;
-    }
-    if (user?.role === "admin") {
-      console.log(
-        "[DuesPageClient] Auth loaded and user is admin. Calling fetchDues."
-      );
-      fetchDues();
-    } else {
-      console.log(
-        "[DuesPageClient] Auth loaded but user is not admin or not logged in."
-      );
-      setIsDataLoading(false);
-    }
-  }, [isAuthLoading, user, fetchDues]);
 
   const resetForm = () => {
     setFormData({
@@ -219,22 +162,24 @@ export function DuesPageClient() {
     }
     setIsSubmitting(true);
     try {
-      if (editingEntryId) {
-        await apiClient.put(`/dues/${editingEntryId}`, formData);
-        toast({
-          title: "Entry Updated",
-          description: "The due entry has been updated.",
-        });
+      const action = editingEntryId
+        ? () => updateDueAction(editingEntryId, formData)
+        : () => createDueAction(formData);
+
+      const result = await action(); // Call the server action
+
+      if (result.success) {
+        toast({ title: "Success", description: result.message });
+        resetForm();
+        setIsDialogOpen(false);
       } else {
-        await apiClient.post("/dues", formData);
         toast({
-          title: "Entry Added",
-          description: "New due entry has been added.",
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
         });
       }
-      await fetchDues();
-      resetForm();
-      setIsDialogOpen(false);
+      // No need to call fetchDues()!
     } catch (err) {
       toast({
         title: "Submission Error",
@@ -255,39 +200,37 @@ export function DuesPageClient() {
       notes: entry.notes,
       dueDate: entry.dueDate.split("T")[0],
     });
-    setEditingEntryId(entry._id || entry.id);
+    if (entry._id) {
+      setEditingEntryId(entry._id);
+    } else {
+      if (entry.id) {
+        setEditingEntryId(entry.id);
+      }
+    }
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await apiClient.delete(`/dues/${id}`);
-      toast({
-        title: "Entry Deleted",
-        description: "The due entry has been removed.",
-      });
-      await fetchDues();
-    } catch (err) {
+    const result = await deleteDueAction(id);
+    if (result.success) {
+      toast({ title: "Success", description: result.message });
+    } else {
       toast({
         title: "Error",
-        description: "Could not delete the entry.",
+        description: result.message,
         variant: "destructive",
       });
     }
   };
 
   const handleMarkAsPaid = async (id: string) => {
-    try {
-      await apiClient.patch(`/dues/${id}/pay`);
-      toast({
-        title: "Marked as Paid",
-        description: "The payment has been marked as complete.",
-      });
-      await fetchDues();
-    } catch (err) {
+    const result = await markDueAsPaidAction(id);
+    if (result.success) {
+      toast({ title: "Success", description: result.message });
+    } else {
       toast({
         title: "Error",
-        description: "Could not mark the entry as paid.",
+        description: result.message,
         variant: "destructive",
       });
     }
@@ -515,13 +458,9 @@ export function DuesPageClient() {
               <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-3/4" />
-              ) : (
-                <div className="text-2xl font-bold text-green-600">
-                  {totalReceive.toLocaleString()} EGP
-                </div>
-              )}
+              <div className="text-2xl font-bold text-green-600">
+                {totalReceive.toLocaleString()} EGP
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -532,13 +471,9 @@ export function DuesPageClient() {
               <TrendingDown className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-3/4" />
-              ) : (
-                <div className="text-2xl font-bold text-red-600">
-                  {totalPay.toLocaleString()} EGP
-                </div>
-              )}
+              <div className="text-2xl font-bold text-red-600">
+                {totalPay.toLocaleString()} EGP
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -547,17 +482,13 @@ export function DuesPageClient() {
               <DollarSign className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-3/4" />
-              ) : (
-                <div
-                  className={`text-2xl font-bold ${
-                    netBalance >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {Math.abs(netBalance).toLocaleString()} EGP
-                </div>
-              )}
+              <div
+                className={`text-2xl font-bold ${
+                  netBalance >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {Math.abs(netBalance).toLocaleString()} EGP
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -617,133 +548,106 @@ export function DuesPageClient() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isDataLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell colSpan={7}>
-                          <Skeleton className="h-8 w-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : error ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="text-center text-destructive py-8"
-                      >
-                        {error}
+                  {filteredEntries.map((entry) => (
+                    <TableRow
+                      key={entry._id || entry.id}
+                      id={`due-${entry._id || entry.id}`}
+                      className="transition-colors"
+                    >
+                      <TableCell>
+                        <Badge
+                          variant={
+                            entry.type === "receive" ? "default" : "secondary"
+                          }
+                        >
+                          {entry.type === "receive" ? "Owed to Me" : "I Owe"}
+                        </Badge>
                       </TableCell>
-                    </TableRow>
-                  ) : filteredEntries.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="text-muted-foreground">
-                          <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg font-medium mb-2">
-                            No entries found
-                          </p>
-                          <p className="text-sm">
-                            Add your first due entry to get started
-                          </p>
+                      <TableCell className="font-medium">
+                        {entry.name}
+                      </TableCell>
+                      <TableCell
+                        className="max-w-xs truncate"
+                        title={entry.notes}
+                      >
+                        {entry.notes}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`font-semibold ${
+                            entry.type === "receive"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {entry.amount.toLocaleString()} {entry.currency}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {new Date(entry.dueDate).toLocaleDateString()}
+                          </span>
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredEntries.map((entry) => (
-                      <TableRow
-                        key={entry._id || entry.id}
-                        id={`due-${entry._id || entry.id}`}
-                        className="transition-colors"
-                      >
-                        <TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(entry.status)}
                           <Badge
-                            variant={
-                              entry.type === "receive" ? "default" : "secondary"
-                            }
+                            variant={getStatusColor(entry.status)}
+                            className="capitalize"
                           >
-                            {entry.type === "receive" ? "Owed to Me" : "I Owe"}
+                            {entry.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {entry.name}
-                        </TableCell>
-                        <TableCell
-                          className="max-w-xs truncate"
-                          title={entry.notes}
-                        >
-                          {entry.notes}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`font-semibold ${
-                              entry.type === "receive"
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {entry.amount.toLocaleString()} {entry.currency}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>
-                              {new Date(entry.dueDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {getStatusIcon(entry.status)}
-                            <Badge
-                              variant={getStatusColor(entry.status)}
-                              className="capitalize"
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
                             >
-                              {entry.status}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(entry)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            {entry.status !== "Paid" && (
                               <DropdownMenuItem
-                                onClick={() => handleEdit(entry)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              {entry.status !== "Paid" && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleMarkAsPaid(entry._id || entry.id)
-                                  }
-                                >
-                                  <CheckCircle className="mr-2 h-4 w-4" /> Mark
-                                  as Paid
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                className="text-destructive"
                                 onClick={() =>
-                                  handleDelete(entry._id || entry.id)
+                                  entry._id
+                                    ? handleMarkAsPaid(entry._id)
+                                    : entry.id
+                                    ? handleMarkAsPaid(entry.id)
+                                    : null
                                 }
                               >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                <CheckCircle className="mr-2 h-4 w-4" /> Mark as
+                                Paid
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                            )}
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() =>
+                                entry._id
+                                  ? handleDelete(entry._id)
+                                  : entry.id
+                                  ? handleDelete(entry.id)
+                                  : null
+                              }
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>

@@ -251,7 +251,6 @@ export function EditInvoicePageClient({
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  console.log("invoice : ", invoice);
   const formattedInvoice = {
     ...invoice,
     bookingDate: formatDateForInput(invoice.bookingDate),
@@ -391,7 +390,6 @@ export function EditInvoicePageClient({
     if (typeof (finalData as any).createdBy === "object") {
       delete (finalData as any).createdBy;
     }
-    console.log("finalData : ", finalData);
     startTransition(async () => {
       const result = await updateInvoiceAction(invoice.id, finalData);
       if (result?.success === false) {

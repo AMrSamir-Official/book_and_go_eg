@@ -142,7 +142,6 @@ export default function NewAccounting() {
 
   const { data } = useBookingFormStore();
 
-  console.log("file number from the booking data ", data?.fileNumber); // تطبع BG1234 مثلاً
   const {
     register,
     control,
@@ -425,12 +424,6 @@ export default function NewAccounting() {
         .filter((item) => item.status === "pending" && item.amount > 0)
         .map((item) => `${item.supplierName} in ${item.city}`),
     };
-
-    console.log("--- FINAL CALCULATED INVOICE DATA ---");
-    console.log(data);
-
-    console.log("--- PENDING ITEMS TO BE PAID ---");
-    console.log(pendingItems);
 
     toast({
       title: "Invoice Ready",

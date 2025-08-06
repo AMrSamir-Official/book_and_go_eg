@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  getLatestNotificationsAction,
+  getUnreadNotificationsCountAction,
+  markAllNotificationsAsReadAction,
+  markNotificationAsReadAction,
+} from "@/actions/notificationsActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +19,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/lib/auth";
-import { createApiClient } from "@/lib/axios";
 import {
   AlertCircle,
   Bell,
@@ -37,8 +42,6 @@ interface ApiNotification {
   invoiceItemId?: string;
 }
 
-const apiClient = createApiClient();
-
 export function HeaderNotifications() {
   const t = useTranslations("notifications");
   const router = useRouter();
@@ -52,18 +55,23 @@ export function HeaderNotifications() {
 
   // 2. تحديث دالة جلب البيانات لتشمل populate لكلا النوعين
   const fetchData = useCallback(async () => {
-    // لا نغير حالة التحميل في التحديثات الدورية
     try {
-      const [notifResponse, countResponse] = await Promise.all([
-        apiClient.get("/notifications?limit=10&populate=dueId,invoiceId"),
-        apiClient.get("/notifications/unread-count"),
+      // استدعاء الـ Server Actions الجديدة
+      const [notifResult, countResult] = await Promise.all([
+        getLatestNotificationsAction(),
+        getUnreadNotificationsCountAction(),
       ]);
-      setNotifications(notifResponse.data.data || []);
-      setUnreadCount(countResponse.data.data.count || 0);
+
+      if (notifResult.success) {
+        setNotifications(notifResult.data || []);
+      }
+      if (countResult.success) {
+        setUnreadCount(countResult.data.count || 0);
+      }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
-      setIsLoading(false); // يتم إيقاف التحميل بعد أول جلب فقط
+      setIsLoading(false);
     }
   }, []);
 
@@ -100,7 +108,6 @@ export function HeaderNotifications() {
         : `Invoice #${notification.invoiceId.fileNumber}`;
       icon = <FileText className="h-4 w-4 text-green-500" />;
       targetUrl = `/invoices/${notification.invoiceId}`;
-      console.log("notification", notification);
     }
 
     return { type, title, icon, targetUrl };
@@ -120,34 +127,25 @@ export function HeaderNotifications() {
   };
 
   // 4. دالة توجيه ذكية عند النقر
-  const handleNotificationClick = async (
-    notification: ApiNotification,
-    targetUrl: string
-  ) => {
+  const handleNotificationClick = async (notification, targetUrl) => {
     setIsOpen(false);
     if (!notification.isRead) {
-      try {
-        await apiClient.post(`/notifications/${notification._id}/read`);
-        fetchData();
-      } catch (error) {
-        console.error("Failed to mark notification as read", error);
-      }
+      // استدعاء الـ Server Action
+      await markNotificationAsReadAction(notification._id);
+      fetchData(); //  <-- نبقي على الاستدعاء اليدوي لتحديث هذا المكون الصغير فوراً
     }
     router.push(targetUrl);
   };
 
   const markAllAsRead = async () => {
-    try {
-      await apiClient.post("/notifications/read-all");
-      toast({
-        title: "Success",
-        description: "All notifications marked as read.",
-      });
-      fetchData();
-    } catch (error) {
+    const result = await markAllNotificationsAsReadAction();
+    if (result.success) {
+      toast({ title: "Success", description: result.message });
+      fetchData(); // <-- نبقي على الاستدعاء اليدوي لتحديث الواجهة فوراً
+    } else {
       toast({
         title: "Error",
-        description: "Could not mark all as read.",
+        description: result.message,
         variant: "destructive",
       });
     }

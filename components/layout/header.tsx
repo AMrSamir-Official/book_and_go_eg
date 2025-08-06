@@ -35,7 +35,6 @@ export async function Header() {
     router.push("/login");
   };
   const user = await getCurrentUser();
-  console.log("user data is : ", user);
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
       {/* <div className="flex items-center space-x-4">

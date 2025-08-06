@@ -250,7 +250,6 @@ export function NewInvoicePageClient({
     cities = [],
     nileCruises = [],
   } = initialData || {};
-  console.log("initialData : ", initialData);
   const t = useTranslations("invoices");
   const router = useRouter();
   const { toast } = useToast();

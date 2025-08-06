@@ -375,9 +375,7 @@ export function NewBookingPageClient({
   const citiesWithHotels = useMemo(
     () => Object.keys(hotelsByCity),
     [hotelsByCity]
-  );
-  console.log("hotelsByCity : ", hotelsByCity);
-  console.log("citiesWithHotels : ", citiesWithHotels);
+  ); 
   // React Hook Form setup
   const {
     register,

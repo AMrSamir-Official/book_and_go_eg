@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // واجهة لبيانات المستخدم لتسهيل التعامل معها
 interface User {
@@ -112,6 +111,58 @@ export async function updateUserAction(
       success: true,
       data: result.data.user as User,
       message: "User updated successfully.",
+    };
+  } catch (error) {
+    return { success: false, message: "An unexpected error occurred." };
+  }
+}
+
+export async function adminUpdatePasswordAction(
+  userId: string,
+  formData: FormData
+) {
+  const token = (await cookies()).get("token")?.value;
+  if (!token) return { success: false, message: "Authentication failed." };
+
+  const newPassword = formData.get("newPassword");
+
+  if (
+    !newPassword ||
+    typeof newPassword !== "string" ||
+    newPassword.length < 6
+  ) {
+    return {
+      success: false,
+      message: "Password must be at least 6 characters.",
+    };
+  }
+
+  try {
+    // استخدم :id بدلاً من :userId ليتوافق مع المسار الجديد
+    const response = await fetch(
+      `${API_URL}/admin/users/${userId}/change-password`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newPassword }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: result.message || "Failed to update password.",
+      };
+    }
+
+    return {
+      success: true,
+      message: result.message || "Password updated successfully.",
     };
   } catch (error) {
     return { success: false, message: "An unexpected error occurred." };

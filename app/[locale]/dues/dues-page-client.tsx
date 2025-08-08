@@ -1,15 +1,16 @@
-"use client";
+// FILE: app/your-path/dues-page-client.tsx
 
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+"use client";
 
 import {
   createDueAction,
   deleteDueAction,
   markDueAsPaidAction,
   updateDueAction,
-} from "@/actions/duesActions"; // Import new server actions
+} from "@/actions/duesActions";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -68,8 +69,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import type React from "react";
-import { useMemo, useState } from "react";
+// Make sure useEffect is imported
+import { useEffect, useMemo, useState } from "react";
 
 // Data structure from your API
 interface ApiDue {
@@ -94,36 +97,41 @@ type DisplayDue = Omit<ApiDue, "status"> & {
 interface DueFormData {
   type: "receive" | "pay";
   name: string;
-  amount: number;
+  amount: number | string;
   currency: "USD" | "EGP";
   notes: string;
   dueDate: string;
+  exchangeRate?: number | string;
 }
 
-// Remove useEffect, useCallback
-// ...
-// const apiClient = createApiClient(); // DELETE THIS LINE
-// ...
 export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
-  // Accept props
   const t = useTranslations("common");
   const { toast } = useToast();
   const { user, isLoading: isAuthLoading } = useAuthStore();
+  const router = useRouter();
 
-  // --- DEBUGGING LOG ---
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [dues, setDues] = useState<ApiDue[]>(initialDues);
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+
+  // ✅ THIS IS THE FIX: This effect syncs the props with the state.
+  useEffect(() => {
+    setDues(initialDues);
+  }, [initialDues]);
+
+  // ... the rest of your component code is the same ...
+  // (handleSubmit, handleEdit, handleDelete, return statement, etc.)
+  // I am including the full code below for clarity.
+
   const [formData, setFormData] = useState<DueFormData>({
     type: "receive",
-    amount: 0,
+    amount: "",
     currency: "EGP",
     name: "",
     notes: "",
     dueDate: "",
+    exchangeRate: "",
   });
 
   const [filterStatus, setFilterStatus] = useState<
@@ -136,42 +144,80 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
   const resetForm = () => {
     setFormData({
       type: "receive",
-      amount: 0,
+      amount: "",
       currency: "EGP",
       name: "",
       notes: "",
       dueDate: "",
+      exchangeRate: "",
     });
     setEditingEntryId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const amountNumber = Number(formData.amount);
+    const exchangeRateNumber = Number(formData.exchangeRate);
+
     if (
       !formData.name ||
       !formData.notes ||
       !formData.dueDate ||
-      formData.amount <= 0
+      !amountNumber ||
+      amountNumber <= 0
     ) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields with valid amounts.",
         variant: "destructive",
       });
       return;
     }
+
+    if (
+      formData.currency === "USD" &&
+      (!exchangeRateNumber || exchangeRateNumber <= 0)
+    ) {
+      toast({
+        title: "Validation Error",
+        description:
+          "Please provide a valid exchange rate for USD transactions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+
+    let submissionData;
+    if (formData.currency === "USD") {
+      submissionData = {
+        ...formData,
+        amount: amountNumber * exchangeRateNumber,
+        currency: "EGP",
+      };
+      delete submissionData.exchangeRate;
+    } else {
+      submissionData = { ...formData, amount: amountNumber };
+      delete submissionData.exchangeRate;
+    }
+
     try {
       const action = editingEntryId
-        ? () => updateDueAction(editingEntryId, formData)
-        : () => createDueAction(formData);
+        ? () => updateDueAction(editingEntryId, submissionData)
+        : () => createDueAction(submissionData);
 
-      const result = await action(); // Call the server action
+      const result = await action();
+
+      // For debugging, you can log the result from the server action
+      // console.log("Server Action Result:", result);
 
       if (result.success) {
         toast({ title: "Success", description: result.message });
         resetForm();
         setIsDialogOpen(false);
+        router.refresh();
       } else {
         toast({
           title: "Error",
@@ -179,7 +225,6 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
           variant: "destructive",
         });
       }
-      // No need to call fetchDues()!
     } catch (err) {
       toast({
         title: "Submission Error",
@@ -199,14 +244,9 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
       name: entry.name,
       notes: entry.notes,
       dueDate: entry.dueDate.split("T")[0],
+      exchangeRate: "",
     });
-    if (entry._id) {
-      setEditingEntryId(entry._id);
-    } else {
-      if (entry.id) {
-        setEditingEntryId(entry.id);
-      }
-    }
+    setEditingEntryId(entry._id || entry.id!);
     setIsDialogOpen(true);
   };
 
@@ -214,6 +254,7 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
     const result = await deleteDueAction(id);
     if (result.success) {
       toast({ title: "Success", description: result.message });
+      router.refresh();
     } else {
       toast({
         title: "Error",
@@ -227,6 +268,7 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
     const result = await markDueAsPaidAction(id);
     if (result.success) {
       toast({ title: "Success", description: result.message });
+      router.refresh();
     } else {
       toast({
         title: "Error",
@@ -310,9 +352,9 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="flex flex-col items-center justify-between gap-4 lg:flex-row lg:items-center">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold">
+            <h1 className="text-2xl font-bold lg:text-3xl">
               Dues & Settlements
             </h1>
             <p className="text-muted-foreground">
@@ -362,12 +404,9 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
                       type="number"
                       value={formData.amount}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          amount: Number(e.target.value),
-                        })
+                        setFormData({ ...formData, amount: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder="0.00"
                       min="0"
                       step="0.01"
                       required
@@ -391,6 +430,30 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
                     </Select>
                   </div>
                 </div>
+
+                {formData.currency === "USD" && (
+                  <div>
+                    <Label htmlFor="exchangeRate">
+                      Exchange Rate (USD to EGP)
+                    </Label>
+                    <Input
+                      id="exchangeRate"
+                      type="number"
+                      value={formData.exchangeRate}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          exchangeRate: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., 47.5"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                )}
+
                 <div>
                   <Label htmlFor="name">Person/Company</Label>
                   <Input
@@ -449,7 +512,7 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -495,7 +558,7 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
 
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
+            <div className="flex flex-col flex-wrap items-start justify-between gap-4 sm:flex-row sm:items-center">
               <div>
                 <CardTitle>All Entries</CardTitle>
                 <CardDescription>
@@ -620,11 +683,7 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
                             {entry.status !== "Paid" && (
                               <DropdownMenuItem
                                 onClick={() =>
-                                  entry._id
-                                    ? handleMarkAsPaid(entry._id)
-                                    : entry.id
-                                    ? handleMarkAsPaid(entry.id)
-                                    : null
+                                  handleMarkAsPaid(entry._id || entry.id!)
                                 }
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" /> Mark as
@@ -634,11 +693,7 @@ export function DuesPageClient({ initialDues }: { initialDues: ApiDue[] }) {
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() =>
-                                entry._id
-                                  ? handleDelete(entry._id)
-                                  : entry.id
-                                  ? handleDelete(entry.id)
-                                  : null
+                                handleDelete(entry._id || entry.id!)
                               }
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Delete

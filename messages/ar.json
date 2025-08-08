@@ -151,6 +151,7 @@
     "paymentDate": "تاريخ الدفع",
     "amount": "المبلغ",
     "actions": "الإجراءات",
+    "direction": "لي|علي",
     "markPaid": "تحديد كمدفوع",
     "noPendingItems": "لا توجد بنود مالية معلقة."
   },

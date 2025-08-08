@@ -89,6 +89,7 @@
     "paymentDate": "Payment Date",
     "amount": "Amount",
     "actions": "Actions",
+    "direction": "Direction",
     "markPaid": "Mark as Paid",
     "noPendingItems": "No pending financial items found."
   },

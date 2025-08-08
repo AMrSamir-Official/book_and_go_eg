@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { invoiceStatuses, paymentMethods } from "@/lib/fake-data";
+import { InvoiceTypes } from "@/types/invoice";
 import { DollarSign, Minus, Plus, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -39,93 +40,6 @@ interface BookingData {
   createdAt: string;
 }
 
-export interface InvoiceFormData {
-  title: string;
-  invoiceNumber: string;
-  bookingId: string;
-  bookingDate: string;
-  fileNumber: string;
-  supplierName: string;
-  arrivalFileDate: string;
-  totalInvoiceAmount: number;
-  totalInvoiceCurrency: "EGP" | "USD";
-  totalInvoiceExchangeRate?: number;
-  paidAmount: number;
-  restAmount: number;
-  restAmountCurrency: "EGP" | "USD";
-  restAmountExchangeRate?: number;
-  wayOfPayment: string;
-  paymentDate: string;
-  extraIncoming: Array<{
-    incomeType: string;
-    amount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    note: string;
-    status: "pending" | "paid";
-    date: string;
-  }>;
-  accommodation: Array<{
-    city: string; // NEW
-    name: string;
-    totalAmount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  nileCruises: Array<{
-    name: string;
-    totalAmount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  domesticFlights: Array<{
-    details: string;
-    cost: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  entranceTickets: Array<{
-    site: string;
-    cost: number;
-    no: number;
-    total: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-  }>;
-  guide: Array<{
-    city: string; // NEW
-    name: string;
-    cost: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  transportation: Array<{
-    city: string;
-    supplierName: string;
-    amount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: "pending" | "paid";
-    siteCostNo: string;
-  }>;
-  grandTotalIncomeEGP: number;
-  grandTotalExpensesEGP: number;
-  restProfitEGP: number;
-  dueDate: string;
-  paymentMethod: string;
-  status: string;
-  notes: string;
-  dynamicFields: Array<{ label: string; value: string }>;
-}
-
 const convertToEGP = (
   amount?: number,
   currency?: "EGP" | "USD",
@@ -137,7 +51,7 @@ const convertToEGP = (
   return amount || 0;
 };
 
-const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
+const calculateTotals = (formValues: Partial<InvoiceTypes>) => {
   const mainInvoiceEGP = convertToEGP(
     formValues.totalInvoiceAmount,
     formValues.totalInvoiceCurrency,
@@ -261,7 +175,7 @@ export function NewInvoicePageClient({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<InvoiceFormData>({
+  } = useForm<InvoiceTypes>({
     defaultValues: {
       title: `${booking.fileNumber} - Invoice`,
       invoiceNumber: `INV-${new Date().getFullYear()}-${String(
@@ -271,7 +185,8 @@ export function NewInvoicePageClient({
       supplierName: "",
       bookingDate: new Date(booking.createdAt).toISOString().split("T")[0],
       fileNumber: booking.fileNumber,
-
+      paidAmountCurrency: "EGP",
+      paidAmountExchangeRate: 0,
       arrivalFileDate: booking.arrivalDate,
       totalInvoiceAmount: 0,
       totalInvoiceCurrency: "EGP",
@@ -319,19 +234,16 @@ export function NewInvoicePageClient({
       formValues.totalInvoiceCurrency,
       formValues.totalInvoiceExchangeRate
     );
-    const extraIncomingTotal = (formValues.extraIncoming || []).reduce(
-      (sum, item) =>
-        sum + convertToEGP(item?.amount, item?.currency, item?.exchangeRate),
-      0
-    );
+
     const paidAmountEGP = convertToEGP(
       formValues.paidAmount,
-      formValues.totalInvoiceCurrency,
-      formValues.totalInvoiceExchangeRate
+      formValues.paidAmountCurrency,
+      formValues.paidAmountExchangeRate
     );
-    const calculatedRestEGP =
-      mainInvoiceEGP + extraIncomingTotal - paidAmountEGP;
-    if (formValues.restAmount !== calculatedRestEGP) {
+
+    const calculatedRestEGP = mainInvoiceEGP - paidAmountEGP;
+
+    if (formValues.restAmount?.toFixed(2) !== calculatedRestEGP.toFixed(2)) {
       setValue("restAmount", calculatedRestEGP);
     }
   }, [
@@ -339,8 +251,8 @@ export function NewInvoicePageClient({
     formValues.totalInvoiceCurrency,
     formValues.totalInvoiceExchangeRate,
     formValues.paidAmount,
-    formValues.extraIncoming,
-    formValues.restAmount,
+    formValues.paidAmountCurrency,
+    formValues.paidAmountExchangeRate,
     setValue,
   ]);
 
@@ -399,7 +311,7 @@ export function NewInvoicePageClient({
     remove: removeTransportation,
   } = useFieldArray({ control, name: "transportation" });
 
-  const onSubmit = (data: InvoiceFormData) => {
+  const onSubmit = (data: InvoiceTypes) => {
     const finalTotals = calculateTotals(data);
     const finalData = {
       ...data,
@@ -407,6 +319,7 @@ export function NewInvoicePageClient({
       grandTotalExpensesEGP: finalTotals.grandTotalExpensesEGP,
       restProfitEGP: finalTotals.restProfitEGP,
       bookingId: bookingId,
+      totalOwedToSuppliers: finalTotals.totalOwedToSuppliers,
     };
     startTransition(async () => {
       const result = await createInvoiceAction(finalData);
@@ -661,6 +574,7 @@ export function NewInvoicePageClient({
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                  {/* Paid Amount Input */}
                   <div>
                     <Label>Paid Amount</Label>
                     <Input
@@ -670,55 +584,58 @@ export function NewInvoicePageClient({
                       placeholder="0.00"
                     />
                   </div>
-                  <div className="md:col-span-2">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                      <div>
-                        <Label>Rest Amount</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register("restAmount", { valueAsNumber: true })}
-                          placeholder="0.00"
-                          readOnly
-                        />
-                      </div>
-                      <div>
-                        <Label>Currency</Label>
-                        <Controller
-                          name="restAmountCurrency"
-                          control={control}
-                          render={({ field }) => (
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              className="flex items-center space-x-4 pt-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="EGP" id="rest-inv-egp" />
-                                <Label htmlFor="rest-inv-egp">EGP</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="USD" id="rest-inv-usd" />
-                                <Label htmlFor="rest-inv-usd">USD</Label>
-                              </div>
-                            </RadioGroup>
-                          )}
-                        />
-                      </div>
-                      {watch("restAmountCurrency") === "USD" && (
-                        <div>
-                          <Label>Exchange Rate ($ to E£)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...register("restAmountExchangeRate", {
-                              valueAsNumber: true,
-                            })}
-                            placeholder="e.g., 47.50"
-                          />
-                        </div>
+
+                  {/* Paid Amount Currency Selector */}
+                  <div>
+                    <Label>Paid Amount Currency</Label>
+                    <Controller
+                      name="paidAmountCurrency"
+                      control={control}
+                      render={({ field }) => (
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex items-center space-x-4 pt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="EGP" id="paid-inv-egp" />
+                            <Label htmlFor="paid-inv-egp">EGP</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="USD" id="paid-inv-usd" />
+                            <Label htmlFor="paid-inv-usd">USD</Label>
+                          </div>
+                        </RadioGroup>
                       )}
+                    />
+                  </div>
+
+                  {/* Paid Amount Exchange Rate (Conditional) */}
+                  {watch("paidAmountCurrency") === "USD" && (
+                    <div>
+                      <Label>Paid Ex. Rate ($ to E£)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...register("paidAmountExchangeRate", {
+                          valueAsNumber: true,
+                        })}
+                        placeholder="e.g., 47.50"
+                      />
                     </div>
+                  )}
+
+                  {/* Simplified Rest Amount */}
+                  <div>
+                    <Label>Rest Amount (EGP)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...register("restAmount", { valueAsNumber: true })}
+                      placeholder="0.00"
+                      readOnly
+                      className="font-bold bg-muted"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1861,6 +1778,7 @@ export function NewInvoicePageClient({
                         exchangeRate: 0,
                         status: "pending",
                         siteCostNo: "",
+                        paymentDate: "",
                       })
                     }
                   >
@@ -1998,38 +1916,47 @@ export function NewInvoicePageClient({
                         </div>
                       )}
                     </div>
-                    <div>
-                      <Label>Status</Label>
-                      <Controller
-                        name={`transportation.${index}.status`}
-                        control={control}
-                        render={({ field }) => (
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            className="flex items-center space-x-4 pt-2"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="pending"
-                                id={`trans-pending-${index}`}
-                              />
-                              <Label htmlFor={`trans-pending-${index}`}>
-                                Pending
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="paid"
-                                id={`trans-paid-${index}`}
-                              />
-                              <Label htmlFor={`trans-paid-${index}`}>
-                                Paid
-                              </Label>
-                            </div>
-                          </RadioGroup>
-                        )}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Payment Date</Label>
+                        <Input
+                          type="date"
+                          {...register(`transportation.${index}.paymentDate`)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Controller
+                          name={`transportation.${index}.status`}
+                          control={control}
+                          render={({ field }) => (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex items-center space-x-4 pt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`trans-pending-${index}`}
+                                />
+                                <Label htmlFor={`trans-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`trans-paid-${index}`}
+                                />
+                                <Label htmlFor={`trans-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

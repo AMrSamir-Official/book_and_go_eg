@@ -124,8 +124,8 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="flex h-16 items-center justify-between px-4 border-b">
         {!sidebarCollapsed && (
           <div className="flex items-center space-x-2">
-            <Plane className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">Book & Go</span>
+            <Plane className="h-6 w-6 text-red-600" />
+            <span className="font-bold text-lg text-red-700">Book & Go</span>
           </div>
         )}
         <Button

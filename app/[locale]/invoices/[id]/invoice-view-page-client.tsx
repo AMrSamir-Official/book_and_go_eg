@@ -14,107 +14,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { downloadInvoicePDF, shareInvoicePDF } from "@/lib/podf-utils/invoice";
+import { InvoiceTypes } from "@/types/invoice";
 import { Edit, Printer, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// UPDATED InvoiceData interface
-// The new, correct interface for BOTH files
-interface InvoiceData {
-  id: string;
-  _id: string;
-  invoiceNumber: string;
-  title: string;
-  totalInvoiceAmount: number;
-  totalInvoiceCurrency: "EGP" | "USD";
-  totalInvoiceExchangeRate?: number;
-  paidAmount: number;
-  restAmount: number;
-  restAmountCurrency: "EGP" | "USD";
-  restAmountExchangeRate?: number;
-
-  extraIncoming: Array<{
-    incomeType: string;
-    amount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: string;
-  }>;
-  accommodation: Array<{
-    city: string;
-    name: string;
-    totalAmount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: string;
-  }>;
-  nileCruises: Array<{
-    name: string;
-    totalAmount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: string;
-  }>;
-  domesticFlights: Array<{
-    details: string;
-    cost: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: string;
-  }>;
-  entranceTickets: Array<{
-    site: string;
-    cost: number;
-    no: number;
-    total: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-  }>;
-  guide: Array<{
-    city: string;
-    name: string;
-    cost: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: string;
-  }>;
-  transportation: Array<{
-    supplierName: string;
-    city: string;
-    amount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: string;
-  }>;
-
-  grandTotalIncomeEGP: number;
-  grandTotalExpensesEGP: number;
-  restProfitEGP: number;
-
-  fileNumber: string;
-  supplierName: string;
-  dueDate: string;
-  paymentMethod: string;
-  status: string;
-}
-
+// Helper Functions
 const formatCurrency = (amount: number, currency: string = "EGP") => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
   }).format(amount || 0);
 };
+
 const convertToEGP = (amount: number, currency: string, rate?: number) => {
   if (currency?.trim().toUpperCase() === "USD" && rate && rate > 0) {
     return amount * rate;
   }
   return amount;
 };
-export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
+
+// The Component
+export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceTypes }) {
   const router = useRouter();
+
   const handleDownload = () => {
     downloadInvoicePDF(invoice);
   };
+
   const handleShare = async () => {
     try {
       await shareInvoicePDF(
@@ -134,6 +61,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">
@@ -156,8 +84,11 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
           </div>
         </div>
 
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Income Details Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Income Details</CardTitle>
@@ -183,22 +114,16 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                       {formatCurrency(
                         convertToEGP(
                           invoice.paidAmount,
-                          invoice.totalInvoiceCurrency,
-                          invoice.totalInvoiceExchangeRate
+                          invoice.paidAmountCurrency,
+                          invoice.paidAmountExchangeRate
                         )
                       )}
                     </p>
                   </div>
                   <div>
                     <Label>Rest Amount (EGP)</Label>
-                    <p>
-                      {formatCurrency(
-                        convertToEGP(
-                          invoice.restAmount,
-                          invoice.restAmountCurrency,
-                          invoice.restAmountExchangeRate
-                        )
-                      )}
+                    <p className="font-bold">
+                      {formatCurrency(invoice.restAmount)}
                     </p>
                   </div>
                 </div>
@@ -209,7 +134,9 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                     <TableRow>
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
+                      <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Note</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -226,6 +153,11 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                           )}
                         </TableCell>
                         <TableCell>
+                          {item.date
+                            ? new Date(item.date).toLocaleDateString()
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell>
                           <Badge
                             variant={
                               item.status === "paid" ? "default" : "secondary"
@@ -234,6 +166,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                             {item.status}
                           </Badge>
                         </TableCell>
+                        <TableCell>{item.note || "N/A"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -241,6 +174,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
               </CardContent>
             </Card>
 
+            {/* Expenses Breakdown Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Expenses Breakdown</CardTitle>
@@ -255,13 +189,14 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                           <TableHead>City</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Payment Date</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {invoice.accommodation.map((item, i) => (
                           <TableRow key={i}>
-                            <TableCell>{item.city}</TableCell> {/* <-- NEW */}
+                            <TableCell>{item.city}</TableCell>
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
                               {formatCurrency(
@@ -271,6 +206,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                                   item.exchangeRate
                                 )
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {item.paymentDate
+                                ? new Date(
+                                    item.paymentDate
+                                  ).toLocaleDateString()
+                                : "N/A"}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -289,7 +231,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                     </Table>
                   </div>
                 )}
-                {invoice.nileCruises && invoice.nileCruises.length > 0 && (
+                {invoice.nileCruises.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-2">Nile Cruises</h3>
                     <Table>
@@ -297,6 +239,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Payment Date</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -312,6 +255,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                                   item.exchangeRate
                                 )
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {item.paymentDate
+                                ? new Date(
+                                    item.paymentDate
+                                  ).toLocaleDateString()
+                                : "N/A"}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -338,6 +288,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                         <TableRow>
                           <TableHead>Details</TableHead>
                           <TableHead>Cost</TableHead>
+                          <TableHead>Payment Date</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -353,6 +304,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                                   item.exchangeRate
                                 )
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {item.paymentDate
+                                ? new Date(
+                                    item.paymentDate
+                                  ).toLocaleDateString()
+                                : "N/A"}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -421,13 +379,14 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                           <TableHead>City</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Cost</TableHead>
+                          <TableHead>Payment Date</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {invoice.guide.map((item, i) => (
                           <TableRow key={i}>
-                            <TableCell>{item.city}</TableCell> {/* <-- NEW */}
+                            <TableCell>{item.city}</TableCell>
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
                               {formatCurrency(
@@ -437,6 +396,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                                   item.exchangeRate
                                 )
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {item.paymentDate
+                                ? new Date(
+                                    item.paymentDate
+                                  ).toLocaleDateString()
+                                : "N/A"}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -458,12 +424,13 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                 {invoice.transportation.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-2">Transportation</h3>
-                    {/* UPDATED: Simplified table for transportation */}
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>City</TableHead>
                           <TableHead>Supplier</TableHead>
+                          <TableHead>Payment Date</TableHead>
+                          <TableHead>Site/Cost No.</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
@@ -473,6 +440,14 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                           <TableRow key={i}>
                             <TableCell>{item.city}</TableCell>
                             <TableCell>{item.supplierName}</TableCell>
+                            <TableCell>
+                              {item.paymentDate
+                                ? new Date(
+                                    item.paymentDate
+                                  ).toLocaleDateString()
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>{item.siteCostNo || "N/A"}</TableCell>
                             <TableCell>
                               {formatCurrency(
                                 convertToEGP(
@@ -503,6 +478,7 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
             </Card>
           </div>
 
+          {/* Right Column */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -522,6 +498,11 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                   <Label>Rest Profit</Label>
                   <span>{formatCurrency(invoice.restProfitEGP)}</span>
                 </div>
+
+                <div className="flex justify-between font-medium text-blue-600 mt-2 border-t pt-2">
+                  <Label>Total Owed to Suppliers</Label>
+                  <span>{formatCurrency(invoice.totalOwedToSuppliers)}</span>
+                </div>
               </CardContent>
             </Card>
 
@@ -537,6 +518,38 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Supplier:</span>
                   <strong>{invoice.supplierName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Booking Date:</span>
+                  <strong>
+                    {invoice.bookingDate
+                      ? new Date(invoice.bookingDate).toLocaleDateString()
+                      : "N/A"}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Arrival File Date:
+                  </span>
+                  <strong>
+                    {invoice.arrivalFileDate
+                      ? new Date(invoice.arrivalFileDate).toLocaleDateString()
+                      : "N/A"}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Main Payment Date:
+                  </span>
+                  <strong>
+                    {invoice.paymentDate
+                      ? new Date(invoice.paymentDate).toLocaleDateString()
+                      : "N/A"}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Way of Payment:</span>
+                  <strong>{invoice.wayOfPayment || "N/A"}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Due Date:</span>
@@ -558,6 +571,35 @@ export function InvoiceViewPageClient({ invoice }: { invoice: InvoiceData }) {
                 </div>
               </CardContent>
             </Card>
+
+            {invoice.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notes</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm whitespace-pre-wrap">
+                  {invoice.notes}
+                </CardContent>
+              </Card>
+            )}
+
+            {invoice.dynamicFields && invoice.dynamicFields.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Additional Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {invoice.dynamicFields.map((field, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        {field.label}:
+                      </span>
+                      <strong>{field.value}</strong>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import axios from "axios";
 // الرابط الأساسي للـ API الخاص بك
 // تأكد من وجوده في ملف .env.local
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export const createApiClient = () => {
   const api = axios.create({

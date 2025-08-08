@@ -4,8 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
 // You can define this in a central place if you use it often
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // Helper to get the token
 async function getAuthHeader() {

@@ -173,7 +173,7 @@ function GuideItem({
                 </SelectTrigger>
                 <SelectContent>
                   {nationalities.map((nat) => (
-                    <SelectItem key={nat.id} value={nat.name}>
+                    <SelectItem key={nat.id || nat._id} value={nat.name}>
                       {nat.name}
                     </SelectItem>
                   ))}

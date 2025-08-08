@@ -2,16 +2,15 @@
 
 "use server";
 
-import { InvoiceFormData } from "@/app/[locale]/invoices/new/new-invoice-client";
+import { InvoiceTypes } from "@/types/invoice";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 // سنقوم بتصدير هذا النوع من ملف العميل لاحقاً
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-export async function createInvoiceAction(data: InvoiceFormData) {
+export async function createInvoiceAction(data: InvoiceTypes) {
   const token = (await cookies()).get("token")?.value;
   if (!token) {
     return {
@@ -88,7 +87,7 @@ export async function getInvoiceByIdAction(invoiceId: string) {
 
 export async function updateInvoiceAction(
   invoiceId: string,
-  data: InvoiceFormData
+  data: InvoiceTypes
 ) {
   const token = (await cookies()).get("token")?.value;
   if (!token) {

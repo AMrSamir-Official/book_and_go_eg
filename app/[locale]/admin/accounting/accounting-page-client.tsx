@@ -1,104 +1,132 @@
-"use client"
+"use client";
 
-import { useState, useRef } from "react"
-import { useTranslations } from "next-intl"
-import { useSearchParams, useRouter } from "next/navigation"
-import { DashboardLayout } from "@/components/layout/dashboard-layout"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Badge } from "@/components/ui/badge"
-import { Calculator, Printer, Edit, Plus, Trash2, Eye, ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ArrowLeft,
+  Calculator,
+  Edit,
+  Eye,
+  Plus,
+  Printer,
+  Trash2,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useRef, useState } from "react";
 
 interface BasicInfo {
-  bookingDate: string
-  fileNumber: string
-  supplierName: string
-  arrivalFileDate: string
+  bookingDate: string;
+  fileNumber: string;
+  supplierName: string;
+  arrivalFileDate: string;
 }
 
 interface Transaction {
-  id: string
-  description: string
-  totalInvoice: number
-  currency: "USD" | "EGP"
-  paidAmount: number
-  restAmount: number
-  wayOfPayment: "Cash upon arrival" | "Bank remittance"
-  date: string
+  id: string;
+  description: string;
+  totalInvoice: number;
+  currency: "USD" | "EGP";
+  paidAmount: number;
+  restAmount: number;
+  wayOfPayment: "Cash upon arrival" | "Bank remittance";
+  date: string;
 }
 
 interface ExtraIncoming {
-  id: string
-  type: "Tipping" | "Optional tours" | "Hotel extension" | "Shopping" | "Tickets"
-  amount: number
-  currency: "USD" | "EGP"
-  note: string
-  status: "pending" | "paid"
-  date: string
+  id: string;
+  type:
+    | "Tipping"
+    | "Optional tours"
+    | "Hotel extension"
+    | "Shopping"
+    | "Tickets";
+  amount: number;
+  currency: "USD" | "EGP";
+  note: string;
+  status: "pending" | "paid";
+  date: string;
 }
 
 interface Accommodation {
-  id: string
-  hotelName: string
-  totalAmount: number
-  currency: "USD" | "EGP"
-  paymentDate: string
-  status: "pending" | "paid"
+  id: string;
+  hotelName: string;
+  totalAmount: number;
+  currency: "USD" | "EGP";
+  paymentDate: string;
+  status: "pending" | "paid";
 }
 
 interface DomesticFlight {
-  id: string
-  flightDetails: string
-  cost: number
-  currency: "USD" | "EGP"
-  paymentDate: string
-  status: "pending" | "paid"
+  id: string;
+  flightDetails: string;
+  cost: number;
+  currency: "USD" | "EGP";
+  paymentDate: string;
+  status: "pending" | "paid";
 }
 
 interface Guide {
-  id: string
-  guideName: string
-  date: string
-  note: string
-  totalCost: number
-  currency: "USD" | "EGP"
+  id: string;
+  guideName: string;
+  date: string;
+  note: string;
+  totalCost: number;
+  currency: "USD" | "EGP";
 }
 
 interface Transportation {
-  id: string
-  city: "Cairo" | "Aswan & Luxor"
-  supplierName: string
-  amount: number
-  currency: "USD" | "EGP"
-  status: "pending" | "paid"
+  id: string;
+  city: "Cairo" | "Aswan & Luxor";
+  supplierName: string;
+  amount: number;
+  currency: "USD" | "EGP";
+  status: "pending" | "paid";
 }
 
 export function AccountingPageClient() {
-  const t = useTranslations("accounting")
-  const tCommon = useTranslations("common")
-  const { toast } = useToast()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const bookingId = searchParams.get("booking")
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  const printRef = useRef<HTMLDivElement>(null)
-  const [editMode, setEditMode] = useState(false)
-  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "EGP">("USD")
-  const [exchangeRate, setExchangeRate] = useState(50)
+  const t = useTranslations("accounting");
+  const tCommon = useTranslations("common");
+  const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const bookingId = searchParams.get("booking");
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "EGP">(
+    "USD"
+  );
+  const [exchangeRate, setExchangeRate] = useState(50);
 
   const [basicInfo, setBasicInfo] = useState<BasicInfo>({
     bookingDate: new Date().toISOString().split("T")[0],
     fileNumber: bookingId || "BG-2024-001",
     supplierName: "Book & Go Travel",
     arrivalFileDate: "",
-  })
+  });
 
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
@@ -111,7 +139,7 @@ export function AccountingPageClient() {
       wayOfPayment: "Cash upon arrival",
       date: "2024-01-20",
     },
-  ])
+  ]);
 
   const [extraIncoming, setExtraIncoming] = useState<ExtraIncoming[]>([
     {
@@ -123,7 +151,7 @@ export function AccountingPageClient() {
       status: "pending",
       date: "2024-01-21",
     },
-  ])
+  ]);
 
   const [accommodation, setAccommodation] = useState<Accommodation[]>([
     {
@@ -134,7 +162,7 @@ export function AccountingPageClient() {
       paymentDate: "2024-01-20",
       status: "paid",
     },
-  ])
+  ]);
 
   const [domesticFlights, setDomesticFlights] = useState<DomesticFlight[]>([
     {
@@ -145,7 +173,7 @@ export function AccountingPageClient() {
       paymentDate: "2024-01-20",
       status: "paid",
     },
-  ])
+  ]);
 
   const [guides, setGuides] = useState<Guide[]>([
     {
@@ -156,7 +184,7 @@ export function AccountingPageClient() {
       totalCost: 150,
       currency: "USD",
     },
-  ])
+  ]);
 
   const [transportation, setTransportation] = useState<Transportation[]>([
     {
@@ -167,31 +195,58 @@ export function AccountingPageClient() {
       currency: "USD",
       status: "paid",
     },
-  ])
+  ]);
 
-  const [entranceTickets] = useState({ total: 200, currency: "USD" as const })
+  const [entranceTickets] = useState({ total: 200, currency: "USD" as const });
 
   const convertAmount = (amount: number, fromCurrency: "USD" | "EGP") => {
-    if (selectedCurrency === fromCurrency) return amount
-    if (selectedCurrency === "USD" && fromCurrency === "EGP") return amount / exchangeRate
-    if (selectedCurrency === "EGP" && fromCurrency === "USD") return amount * exchangeRate
-    return amount
-  }
+    if (selectedCurrency === fromCurrency) return amount;
+    if (selectedCurrency === "USD" && fromCurrency === "EGP")
+      return amount / exchangeRate;
+    if (selectedCurrency === "EGP" && fromCurrency === "USD")
+      return amount * exchangeRate;
+    return amount;
+  };
 
   const calculateTotals = () => {
-    const totalIncome = transactions.reduce((sum, t) => sum + convertAmount(t.totalInvoice, t.currency), 0)
-    const totalExtraIncome = extraIncoming.reduce((sum, e) => sum + convertAmount(e.amount, e.currency), 0)
+    const totalIncome = transactions.reduce(
+      (sum, t) => sum + convertAmount(t.totalInvoice, t.currency),
+      0
+    );
+    const totalExtraIncome = extraIncoming.reduce(
+      (sum, e) => sum + convertAmount(e.amount, e.currency),
+      0
+    );
 
-    const totalAccommodation = accommodation.reduce((sum, a) => sum + convertAmount(a.totalAmount, a.currency), 0)
-    const totalFlights = domesticFlights.reduce((sum, f) => sum + convertAmount(f.cost, f.currency), 0)
-    const totalGuides = guides.reduce((sum, g) => sum + convertAmount(g.totalCost, g.currency), 0)
-    const totalTransportation = transportation.reduce((sum, t) => sum + convertAmount(t.amount, t.currency), 0)
-    const totalEntranceTickets = convertAmount(entranceTickets.total, entranceTickets.currency)
+    const totalAccommodation = accommodation.reduce(
+      (sum, a) => sum + convertAmount(a.totalAmount, a.currency),
+      0
+    );
+    const totalFlights = domesticFlights.reduce(
+      (sum, f) => sum + convertAmount(f.cost, f.currency),
+      0
+    );
+    const totalGuides = guides.reduce(
+      (sum, g) => sum + convertAmount(g.totalCost, g.currency),
+      0
+    );
+    const totalTransportation = transportation.reduce(
+      (sum, t) => sum + convertAmount(t.amount, t.currency),
+      0
+    );
+    const totalEntranceTickets = convertAmount(
+      entranceTickets.total,
+      entranceTickets.currency
+    );
 
-    const grandTotalIncome = totalIncome + totalExtraIncome
+    const grandTotalIncome = totalIncome + totalExtraIncome;
     const grandTotalExpenses =
-      totalAccommodation + totalFlights + totalGuides + totalTransportation + totalEntranceTickets
-    const restProfit = grandTotalIncome - grandTotalExpenses
+      totalAccommodation +
+      totalFlights +
+      totalGuides +
+      totalTransportation +
+      totalEntranceTickets;
+    const restProfit = grandTotalIncome - grandTotalExpenses;
 
     return {
       totalIncome,
@@ -204,31 +259,31 @@ export function AccountingPageClient() {
       totalEntranceTickets,
       grandTotalExpenses,
       restProfit,
-    }
-  }
+    };
+  };
 
-  const totals = calculateTotals()
+  const totals = calculateTotals();
 
   const handlePrintAccounting = () => {
-    router.push(`/admin/accounting/${basicInfo.fileNumber}/print`)
-  }
+    router.push(`/admin/accounting/${basicInfo.fileNumber}/print`);
+  };
 
   const handleViewBooking = () => {
     if (bookingId) {
-      router.push(`/bookings/${bookingId}`)
+      router.push(`/bookings/${bookingId}`);
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
-        return "default"
+        return "default";
       case "pending":
-        return "secondary"
+        return "secondary";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   const addTransaction = () => {
     const newTransaction: Transaction = {
@@ -240,9 +295,9 @@ export function AccountingPageClient() {
       restAmount: 0,
       wayOfPayment: "Cash upon arrival",
       date: new Date().toISOString().split("T")[0],
-    }
-    setTransactions([...transactions, newTransaction])
-  }
+    };
+    setTransactions([...transactions, newTransaction]);
+  };
 
   const addExtraIncoming = () => {
     const newExtra: ExtraIncoming = {
@@ -253,9 +308,9 @@ export function AccountingPageClient() {
       note: "",
       status: "pending",
       date: new Date().toISOString().split("T")[0],
-    }
-    setExtraIncoming([...extraIncoming, newExtra])
-  }
+    };
+    setExtraIncoming([...extraIncoming, newExtra]);
+  };
 
   const addAccommodation = () => {
     const newAccommodation: Accommodation = {
@@ -265,9 +320,9 @@ export function AccountingPageClient() {
       currency: selectedCurrency,
       paymentDate: new Date().toISOString().split("T")[0],
       status: "pending",
-    }
-    setAccommodation([...accommodation, newAccommodation])
-  }
+    };
+    setAccommodation([...accommodation, newAccommodation]);
+  };
 
   const addDomesticFlight = () => {
     const newFlight: DomesticFlight = {
@@ -277,9 +332,9 @@ export function AccountingPageClient() {
       currency: selectedCurrency,
       paymentDate: new Date().toISOString().split("T")[0],
       status: "pending",
-    }
-    setDomesticFlights([...domesticFlights, newFlight])
-  }
+    };
+    setDomesticFlights([...domesticFlights, newFlight]);
+  };
 
   const addGuide = () => {
     const newGuide: Guide = {
@@ -289,9 +344,9 @@ export function AccountingPageClient() {
       note: "",
       totalCost: 0,
       currency: selectedCurrency,
-    }
-    setGuides([...guides, newGuide])
-  }
+    };
+    setGuides([...guides, newGuide]);
+  };
 
   const addTransportation = () => {
     const newTransport: Transportation = {
@@ -301,9 +356,9 @@ export function AccountingPageClient() {
       amount: 0,
       currency: selectedCurrency,
       status: "pending",
-    }
-    setTransportation([...transportation, newTransport])
-  }
+    };
+    setTransportation([...transportation, newTransport]);
+  };
 
   return (
     <DashboardLayout>
@@ -317,13 +372,20 @@ export function AccountingPageClient() {
             </Button>
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold">Accounting</h1>
-              <p className="text-muted-foreground">Financial management for booking {basicInfo.fileNumber}</p>
+              <p className="text-muted-foreground">
+                Financial management for booking {basicInfo.fileNumber}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <div className="flex items-center space-x-2">
               <Label htmlFor="currency">Currency:</Label>
-              <Select value={selectedCurrency} onValueChange={(value: "USD" | "EGP") => setSelectedCurrency(value)}>
+              <Select
+                value={selectedCurrency}
+                onValueChange={(value: "USD" | "EGP") =>
+                  setSelectedCurrency(value)
+                }
+              >
                 <SelectTrigger className="w-24">
                   <SelectValue />
                 </SelectTrigger>
@@ -353,11 +415,21 @@ export function AccountingPageClient() {
                 View Booking
               </Button>
             )}
-            <Button variant="outline" onClick={() => setEditMode(!editMode)}>
+            <Button
+              className={` ${editMode ? "bg-blue-700" : ""}`}
+              variant="outline"
+              onClick={() => setEditMode(!editMode)}
+            >
               <Edit className="mr-2 h-4 w-4" />
-              {editMode ? "Save Changes" : "Edit Mode"}
+              {editMode
+                ? "Save Changes"
+                : "Edit Mode text-white hover:text-blue-600"}
             </Button>
-            <Button variant="outline" onClick={handlePrintAccounting} disabled={isGeneratingPDF}>
+            <Button
+              variant="outline"
+              onClick={handlePrintAccounting}
+              disabled={isGeneratingPDF}
+            >
               <Printer className="mr-2 h-4 w-4" />
               Print Report
             </Button>
@@ -379,7 +451,9 @@ export function AccountingPageClient() {
                   id="bookingDate"
                   type="date"
                   value={basicInfo.bookingDate}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, bookingDate: e.target.value })}
+                  onChange={(e) =>
+                    setBasicInfo({ ...basicInfo, bookingDate: e.target.value })
+                  }
                   disabled={!editMode}
                   className="mt-1"
                 />
@@ -391,7 +465,9 @@ export function AccountingPageClient() {
                 <Input
                   id="fileNumber"
                   value={basicInfo.fileNumber}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, fileNumber: e.target.value })}
+                  onChange={(e) =>
+                    setBasicInfo({ ...basicInfo, fileNumber: e.target.value })
+                  }
                   disabled={!editMode}
                   className="mt-1"
                 />
@@ -403,20 +479,30 @@ export function AccountingPageClient() {
                 <Input
                   id="supplierName"
                   value={basicInfo.supplierName}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, supplierName: e.target.value })}
+                  onChange={(e) =>
+                    setBasicInfo({ ...basicInfo, supplierName: e.target.value })
+                  }
                   disabled={!editMode}
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="arrivalFileDate" className="text-base font-medium">
+                <Label
+                  htmlFor="arrivalFileDate"
+                  className="text-base font-medium"
+                >
                   Arrival File Date
                 </Label>
                 <Input
                   id="arrivalFileDate"
                   type="date"
                   value={basicInfo.arrivalFileDate}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, arrivalFileDate: e.target.value })}
+                  onChange={(e) =>
+                    setBasicInfo({
+                      ...basicInfo,
+                      arrivalFileDate: e.target.value,
+                    })
+                  }
                   disabled={!editMode}
                   className="mt-1"
                 />
@@ -461,9 +547,9 @@ export function AccountingPageClient() {
                           <Input
                             value={transaction.description}
                             onChange={(e) => {
-                              const updated = [...transactions]
-                              updated[index].description = e.target.value
-                              setTransactions(updated)
+                              const updated = [...transactions];
+                              updated[index].description = e.target.value;
+                              setTransactions(updated);
                             }}
                             disabled={!editMode}
                           />
@@ -474,10 +560,14 @@ export function AccountingPageClient() {
                               type="number"
                               value={transaction.totalInvoice}
                               onChange={(e) => {
-                                const updated = [...transactions]
-                                updated[index].totalInvoice = Number(e.target.value)
-                                updated[index].restAmount = updated[index].totalInvoice - updated[index].paidAmount
-                                setTransactions(updated)
+                                const updated = [...transactions];
+                                updated[index].totalInvoice = Number(
+                                  e.target.value
+                                );
+                                updated[index].restAmount =
+                                  updated[index].totalInvoice -
+                                  updated[index].paidAmount;
+                                setTransactions(updated);
                               }}
                               disabled={!editMode}
                               className="w-24"
@@ -485,9 +575,9 @@ export function AccountingPageClient() {
                             <Select
                               value={transaction.currency}
                               onValueChange={(value: "USD" | "EGP") => {
-                                const updated = [...transactions]
-                                updated[index].currency = value
-                                setTransactions(updated)
+                                const updated = [...transactions];
+                                updated[index].currency = value;
+                                setTransactions(updated);
                               }}
                               disabled={!editMode}
                             >
@@ -506,10 +596,14 @@ export function AccountingPageClient() {
                             type="number"
                             value={transaction.paidAmount}
                             onChange={(e) => {
-                              const updated = [...transactions]
-                              updated[index].paidAmount = Number(e.target.value)
-                              updated[index].restAmount = updated[index].totalInvoice - updated[index].paidAmount
-                              setTransactions(updated)
+                              const updated = [...transactions];
+                              updated[index].paidAmount = Number(
+                                e.target.value
+                              );
+                              updated[index].restAmount =
+                                updated[index].totalInvoice -
+                                updated[index].paidAmount;
+                              setTransactions(updated);
                             }}
                             disabled={!editMode}
                             className="w-24"
@@ -517,16 +611,19 @@ export function AccountingPageClient() {
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">
-                            {transaction.restAmount.toLocaleString()} {transaction.currency}
+                            {transaction.restAmount.toLocaleString()}{" "}
+                            {transaction.currency}
                           </span>
                         </TableCell>
                         <TableCell>
                           <Select
                             value={transaction.wayOfPayment}
-                            onValueChange={(value: "Cash upon arrival" | "Bank remittance") => {
-                              const updated = [...transactions]
-                              updated[index].wayOfPayment = value
-                              setTransactions(updated)
+                            onValueChange={(
+                              value: "Cash upon arrival" | "Bank remittance"
+                            ) => {
+                              const updated = [...transactions];
+                              updated[index].wayOfPayment = value;
+                              setTransactions(updated);
                             }}
                             disabled={!editMode}
                           >
@@ -534,8 +631,12 @@ export function AccountingPageClient() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Cash upon arrival">Cash upon arrival</SelectItem>
-                              <SelectItem value="Bank remittance">Bank remittance</SelectItem>
+                              <SelectItem value="Cash upon arrival">
+                                Cash upon arrival
+                              </SelectItem>
+                              <SelectItem value="Bank remittance">
+                                Bank remittance
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -544,9 +645,9 @@ export function AccountingPageClient() {
                             type="date"
                             value={transaction.date}
                             onChange={(e) => {
-                              const updated = [...transactions]
-                              updated[index].date = e.target.value
-                              setTransactions(updated)
+                              const updated = [...transactions];
+                              updated[index].date = e.target.value;
+                              setTransactions(updated);
                             }}
                             disabled={!editMode}
                           />
@@ -557,7 +658,11 @@ export function AccountingPageClient() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setTransactions(transactions.filter((_, i) => i !== index))}
+                                onClick={() =>
+                                  setTransactions(
+                                    transactions.filter((_, i) => i !== index)
+                                  )
+                                }
                                 className="text-destructive hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -572,7 +677,8 @@ export function AccountingPageClient() {
               </div>
               <div className="text-right">
                 <div className="text-lg font-semibold">
-                  Total: {totals.totalIncome.toLocaleString()} {selectedCurrency}
+                  Total: {totals.totalIncome.toLocaleString()}{" "}
+                  {selectedCurrency}
                 </div>
               </div>
             </div>
@@ -612,9 +718,9 @@ export function AccountingPageClient() {
                         <Select
                           value={extra.type}
                           onValueChange={(value: ExtraIncoming["type"]) => {
-                            const updated = [...extraIncoming]
-                            updated[index].type = value
-                            setExtraIncoming(updated)
+                            const updated = [...extraIncoming];
+                            updated[index].type = value;
+                            setExtraIncoming(updated);
                           }}
                           disabled={!editMode}
                         >
@@ -623,8 +729,12 @@ export function AccountingPageClient() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Tipping">Tipping</SelectItem>
-                            <SelectItem value="Optional tours">Optional tours</SelectItem>
-                            <SelectItem value="Hotel extension">Hotel extension</SelectItem>
+                            <SelectItem value="Optional tours">
+                              Optional tours
+                            </SelectItem>
+                            <SelectItem value="Hotel extension">
+                              Hotel extension
+                            </SelectItem>
                             <SelectItem value="Shopping">Shopping</SelectItem>
                             <SelectItem value="Tickets">Tickets</SelectItem>
                           </SelectContent>
@@ -636,9 +746,9 @@ export function AccountingPageClient() {
                             type="number"
                             value={extra.amount}
                             onChange={(e) => {
-                              const updated = [...extraIncoming]
-                              updated[index].amount = Number(e.target.value)
-                              setExtraIncoming(updated)
+                              const updated = [...extraIncoming];
+                              updated[index].amount = Number(e.target.value);
+                              setExtraIncoming(updated);
                             }}
                             disabled={!editMode}
                             className="w-24"
@@ -646,9 +756,9 @@ export function AccountingPageClient() {
                           <Select
                             value={extra.currency}
                             onValueChange={(value: "USD" | "EGP") => {
-                              const updated = [...extraIncoming]
-                              updated[index].currency = value
-                              setExtraIncoming(updated)
+                              const updated = [...extraIncoming];
+                              updated[index].currency = value;
+                              setExtraIncoming(updated);
                             }}
                             disabled={!editMode}
                           >
@@ -666,9 +776,9 @@ export function AccountingPageClient() {
                         <Input
                           value={extra.note}
                           onChange={(e) => {
-                            const updated = [...extraIncoming]
-                            updated[index].note = e.target.value
-                            setExtraIncoming(updated)
+                            const updated = [...extraIncoming];
+                            updated[index].note = e.target.value;
+                            setExtraIncoming(updated);
                           }}
                           disabled={!editMode}
                           placeholder="Note"
@@ -679,24 +789,37 @@ export function AccountingPageClient() {
                           <RadioGroup
                             value={extra.status}
                             onValueChange={(value: "pending" | "paid") => {
-                              const updated = [...extraIncoming]
-                              updated[index].status = value
-                              setExtraIncoming(updated)
+                              const updated = [...extraIncoming];
+                              updated[index].status = value;
+                              setExtraIncoming(updated);
                             }}
                           >
                             <div className="flex items-center space-x-4">
                               <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="pending" id={`pending-extra-${index}`} />
-                                <Label htmlFor={`pending-extra-${index}`}>Pending</Label>
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`pending-extra-${index}`}
+                                />
+                                <Label htmlFor={`pending-extra-${index}`}>
+                                  Pending
+                                </Label>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="paid" id={`paid-extra-${index}`} />
-                                <Label htmlFor={`paid-extra-${index}`}>Paid</Label>
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`paid-extra-${index}`}
+                                />
+                                <Label htmlFor={`paid-extra-${index}`}>
+                                  Paid
+                                </Label>
                               </div>
                             </div>
                           </RadioGroup>
                         ) : (
-                          <Badge variant={getStatusColor(extra.status)} className="capitalize">
+                          <Badge
+                            variant={getStatusColor(extra.status)}
+                            className="capitalize"
+                          >
                             {extra.status}
                           </Badge>
                         )}
@@ -706,9 +829,9 @@ export function AccountingPageClient() {
                           type="date"
                           value={extra.date}
                           onChange={(e) => {
-                            const updated = [...extraIncoming]
-                            updated[index].date = e.target.value
-                            setExtraIncoming(updated)
+                            const updated = [...extraIncoming];
+                            updated[index].date = e.target.value;
+                            setExtraIncoming(updated);
                           }}
                           disabled={!editMode}
                         />
@@ -718,7 +841,11 @@ export function AccountingPageClient() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setExtraIncoming(extraIncoming.filter((_, i) => i !== index))}
+                            onClick={() =>
+                              setExtraIncoming(
+                                extraIncoming.filter((_, i) => i !== index)
+                              )
+                            }
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -732,7 +859,8 @@ export function AccountingPageClient() {
             </div>
             <div className="mt-4 text-right">
               <div className="text-lg font-semibold">
-                Total: {totals.totalExtraIncome.toLocaleString()} {selectedCurrency}
+                Total: {totals.totalExtraIncome.toLocaleString()}{" "}
+                {selectedCurrency}
               </div>
             </div>
           </CardContent>
@@ -749,7 +877,11 @@ export function AccountingPageClient() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">1- Accommodation</h3>
                 {editMode && (
-                  <Button variant="outline" size="sm" onClick={addAccommodation}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addAccommodation}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Hotel
                   </Button>
@@ -773,9 +905,9 @@ export function AccountingPageClient() {
                           <Input
                             value={hotel.hotelName}
                             onChange={(e) => {
-                              const updated = [...accommodation]
-                              updated[index].hotelName = e.target.value
-                              setAccommodation(updated)
+                              const updated = [...accommodation];
+                              updated[index].hotelName = e.target.value;
+                              setAccommodation(updated);
                             }}
                             disabled={!editMode}
                             placeholder="Hotel name"
@@ -787,9 +919,11 @@ export function AccountingPageClient() {
                               type="number"
                               value={hotel.totalAmount}
                               onChange={(e) => {
-                                const updated = [...accommodation]
-                                updated[index].totalAmount = Number(e.target.value)
-                                setAccommodation(updated)
+                                const updated = [...accommodation];
+                                updated[index].totalAmount = Number(
+                                  e.target.value
+                                );
+                                setAccommodation(updated);
                               }}
                               disabled={!editMode}
                               className="w-24"
@@ -797,9 +931,9 @@ export function AccountingPageClient() {
                             <Select
                               value={hotel.currency}
                               onValueChange={(value: "USD" | "EGP") => {
-                                const updated = [...accommodation]
-                                updated[index].currency = value
-                                setAccommodation(updated)
+                                const updated = [...accommodation];
+                                updated[index].currency = value;
+                                setAccommodation(updated);
                               }}
                               disabled={!editMode}
                             >
@@ -818,9 +952,9 @@ export function AccountingPageClient() {
                             type="date"
                             value={hotel.paymentDate}
                             onChange={(e) => {
-                              const updated = [...accommodation]
-                              updated[index].paymentDate = e.target.value
-                              setAccommodation(updated)
+                              const updated = [...accommodation];
+                              updated[index].paymentDate = e.target.value;
+                              setAccommodation(updated);
                             }}
                             disabled={!editMode}
                           />
@@ -830,24 +964,37 @@ export function AccountingPageClient() {
                             <RadioGroup
                               value={hotel.status}
                               onValueChange={(value: "pending" | "paid") => {
-                                const updated = [...accommodation]
-                                updated[index].status = value
-                                setAccommodation(updated)
+                                const updated = [...accommodation];
+                                updated[index].status = value;
+                                setAccommodation(updated);
                               }}
                             >
                               <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="pending" id={`pending-hotel-${index}`} />
-                                  <Label htmlFor={`pending-hotel-${index}`}>Pending</Label>
+                                  <RadioGroupItem
+                                    value="pending"
+                                    id={`pending-hotel-${index}`}
+                                  />
+                                  <Label htmlFor={`pending-hotel-${index}`}>
+                                    Pending
+                                  </Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="paid" id={`paid-hotel-${index}`} />
-                                  <Label htmlFor={`paid-hotel-${index}`}>Paid</Label>
+                                  <RadioGroupItem
+                                    value="paid"
+                                    id={`paid-hotel-${index}`}
+                                  />
+                                  <Label htmlFor={`paid-hotel-${index}`}>
+                                    Paid
+                                  </Label>
                                 </div>
                               </div>
                             </RadioGroup>
                           ) : (
-                            <Badge variant={getStatusColor(hotel.status)} className="capitalize">
+                            <Badge
+                              variant={getStatusColor(hotel.status)}
+                              className="capitalize"
+                            >
                               {hotel.status}
                             </Badge>
                           )}
@@ -857,7 +1004,11 @@ export function AccountingPageClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setAccommodation(accommodation.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setAccommodation(
+                                  accommodation.filter((_, i) => i !== index)
+                                )
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -871,7 +1022,8 @@ export function AccountingPageClient() {
               </div>
               <div className="mt-4 text-right">
                 <div className="text-lg font-semibold">
-                  Total: {totals.totalAccommodation.toLocaleString()} {selectedCurrency}
+                  Total: {totals.totalAccommodation.toLocaleString()}{" "}
+                  {selectedCurrency}
                 </div>
               </div>
             </div>
@@ -883,7 +1035,11 @@ export function AccountingPageClient() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">2 - Domestic Flight</h3>
                 {editMode && (
-                  <Button variant="outline" size="sm" onClick={addDomesticFlight}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addDomesticFlight}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Flight
                   </Button>
@@ -907,9 +1063,9 @@ export function AccountingPageClient() {
                           <Input
                             value={flight.flightDetails}
                             onChange={(e) => {
-                              const updated = [...domesticFlights]
-                              updated[index].flightDetails = e.target.value
-                              setDomesticFlights(updated)
+                              const updated = [...domesticFlights];
+                              updated[index].flightDetails = e.target.value;
+                              setDomesticFlights(updated);
                             }}
                             disabled={!editMode}
                             placeholder="Flight details"
@@ -921,9 +1077,9 @@ export function AccountingPageClient() {
                               type="number"
                               value={flight.cost}
                               onChange={(e) => {
-                                const updated = [...domesticFlights]
-                                updated[index].cost = Number(e.target.value)
-                                setDomesticFlights(updated)
+                                const updated = [...domesticFlights];
+                                updated[index].cost = Number(e.target.value);
+                                setDomesticFlights(updated);
                               }}
                               disabled={!editMode}
                               className="w-24"
@@ -931,9 +1087,9 @@ export function AccountingPageClient() {
                             <Select
                               value={flight.currency}
                               onValueChange={(value: "USD" | "EGP") => {
-                                const updated = [...domesticFlights]
-                                updated[index].currency = value
-                                setDomesticFlights(updated)
+                                const updated = [...domesticFlights];
+                                updated[index].currency = value;
+                                setDomesticFlights(updated);
                               }}
                               disabled={!editMode}
                             >
@@ -952,9 +1108,9 @@ export function AccountingPageClient() {
                             type="date"
                             value={flight.paymentDate}
                             onChange={(e) => {
-                              const updated = [...domesticFlights]
-                              updated[index].paymentDate = e.target.value
-                              setDomesticFlights(updated)
+                              const updated = [...domesticFlights];
+                              updated[index].paymentDate = e.target.value;
+                              setDomesticFlights(updated);
                             }}
                             disabled={!editMode}
                           />
@@ -964,24 +1120,37 @@ export function AccountingPageClient() {
                             <RadioGroup
                               value={flight.status}
                               onValueChange={(value: "pending" | "paid") => {
-                                const updated = [...domesticFlights]
-                                updated[index].status = value
-                                setDomesticFlights(updated)
+                                const updated = [...domesticFlights];
+                                updated[index].status = value;
+                                setDomesticFlights(updated);
                               }}
                             >
                               <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="pending" id={`pending-flight-${index}`} />
-                                  <Label htmlFor={`pending-flight-${index}`}>Pending</Label>
+                                  <RadioGroupItem
+                                    value="pending"
+                                    id={`pending-flight-${index}`}
+                                  />
+                                  <Label htmlFor={`pending-flight-${index}`}>
+                                    Pending
+                                  </Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="paid" id={`paid-flight-${index}`} />
-                                  <Label htmlFor={`paid-flight-${index}`}>Paid</Label>
+                                  <RadioGroupItem
+                                    value="paid"
+                                    id={`paid-flight-${index}`}
+                                  />
+                                  <Label htmlFor={`paid-flight-${index}`}>
+                                    Paid
+                                  </Label>
                                 </div>
                               </div>
                             </RadioGroup>
                           ) : (
-                            <Badge variant={getStatusColor(flight.status)} className="capitalize">
+                            <Badge
+                              variant={getStatusColor(flight.status)}
+                              className="capitalize"
+                            >
                               {flight.status}
                             </Badge>
                           )}
@@ -991,7 +1160,11 @@ export function AccountingPageClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setDomesticFlights(domesticFlights.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setDomesticFlights(
+                                  domesticFlights.filter((_, i) => i !== index)
+                                )
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1005,7 +1178,8 @@ export function AccountingPageClient() {
               </div>
               <div className="mt-4 text-right">
                 <div className="text-lg font-semibold">
-                  Total: {totals.totalFlights.toLocaleString()} {selectedCurrency}
+                  Total: {totals.totalFlights.toLocaleString()}{" "}
+                  {selectedCurrency}
                 </div>
               </div>
             </div>
@@ -1017,7 +1191,8 @@ export function AccountingPageClient() {
               <h3 className="text-lg font-semibold">Entrance Tickets</h3>
               <div className="mt-4 text-right">
                 <div className="text-lg font-semibold">
-                  Total: {totals.totalEntranceTickets.toLocaleString()} {selectedCurrency}
+                  Total: {totals.totalEntranceTickets.toLocaleString()}{" "}
+                  {selectedCurrency}
                 </div>
               </div>
             </div>
@@ -1053,9 +1228,9 @@ export function AccountingPageClient() {
                           <Input
                             value={guide.guideName}
                             onChange={(e) => {
-                              const updated = [...guides]
-                              updated[index].guideName = e.target.value
-                              setGuides(updated)
+                              const updated = [...guides];
+                              updated[index].guideName = e.target.value;
+                              setGuides(updated);
                             }}
                             disabled={!editMode}
                             placeholder="Guide name"
@@ -1066,9 +1241,9 @@ export function AccountingPageClient() {
                             type="date"
                             value={guide.date}
                             onChange={(e) => {
-                              const updated = [...guides]
-                              updated[index].date = e.target.value
-                              setGuides(updated)
+                              const updated = [...guides];
+                              updated[index].date = e.target.value;
+                              setGuides(updated);
                             }}
                             disabled={!editMode}
                           />
@@ -1077,9 +1252,9 @@ export function AccountingPageClient() {
                           <Input
                             value={guide.note}
                             onChange={(e) => {
-                              const updated = [...guides]
-                              updated[index].note = e.target.value
-                              setGuides(updated)
+                              const updated = [...guides];
+                              updated[index].note = e.target.value;
+                              setGuides(updated);
                             }}
                             disabled={!editMode}
                             placeholder="Note"
@@ -1091,9 +1266,11 @@ export function AccountingPageClient() {
                               type="number"
                               value={guide.totalCost}
                               onChange={(e) => {
-                                const updated = [...guides]
-                                updated[index].totalCost = Number(e.target.value)
-                                setGuides(updated)
+                                const updated = [...guides];
+                                updated[index].totalCost = Number(
+                                  e.target.value
+                                );
+                                setGuides(updated);
                               }}
                               disabled={!editMode}
                               className="w-24"
@@ -1101,9 +1278,9 @@ export function AccountingPageClient() {
                             <Select
                               value={guide.currency}
                               onValueChange={(value: "USD" | "EGP") => {
-                                const updated = [...guides]
-                                updated[index].currency = value
-                                setGuides(updated)
+                                const updated = [...guides];
+                                updated[index].currency = value;
+                                setGuides(updated);
                               }}
                               disabled={!editMode}
                             >
@@ -1122,7 +1299,9 @@ export function AccountingPageClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setGuides(guides.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setGuides(guides.filter((_, i) => i !== index))
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1136,7 +1315,8 @@ export function AccountingPageClient() {
               </div>
               <div className="mt-4 text-right">
                 <div className="text-lg font-semibold">
-                  Total: {totals.totalGuides.toLocaleString()} {selectedCurrency}
+                  Total: {totals.totalGuides.toLocaleString()}{" "}
+                  {selectedCurrency}
                 </div>
               </div>
             </div>
@@ -1148,7 +1328,11 @@ export function AccountingPageClient() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Transportation</h3>
                 {editMode && (
-                  <Button variant="outline" size="sm" onClick={addTransportation}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addTransportation}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Transportation
                   </Button>
@@ -1171,10 +1355,12 @@ export function AccountingPageClient() {
                         <TableCell>
                           <Select
                             value={transport.city}
-                            onValueChange={(value: "Cairo" | "Aswan & Luxor") => {
-                              const updated = [...transportation]
-                              updated[index].city = value
-                              setTransportation(updated)
+                            onValueChange={(
+                              value: "Cairo" | "Aswan & Luxor"
+                            ) => {
+                              const updated = [...transportation];
+                              updated[index].city = value;
+                              setTransportation(updated);
                             }}
                             disabled={!editMode}
                           >
@@ -1183,7 +1369,9 @@ export function AccountingPageClient() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Cairo">Cairo</SelectItem>
-                              <SelectItem value="Aswan & Luxor">Aswan & Luxor</SelectItem>
+                              <SelectItem value="Aswan & Luxor">
+                                Aswan & Luxor
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -1191,9 +1379,9 @@ export function AccountingPageClient() {
                           <Input
                             value={transport.supplierName}
                             onChange={(e) => {
-                              const updated = [...transportation]
-                              updated[index].supplierName = e.target.value
-                              setTransportation(updated)
+                              const updated = [...transportation];
+                              updated[index].supplierName = e.target.value;
+                              setTransportation(updated);
                             }}
                             disabled={!editMode}
                             placeholder="Supplier name"
@@ -1205,9 +1393,9 @@ export function AccountingPageClient() {
                               type="number"
                               value={transport.amount}
                               onChange={(e) => {
-                                const updated = [...transportation]
-                                updated[index].amount = Number(e.target.value)
-                                setTransportation(updated)
+                                const updated = [...transportation];
+                                updated[index].amount = Number(e.target.value);
+                                setTransportation(updated);
                               }}
                               disabled={!editMode}
                               className="w-24"
@@ -1215,9 +1403,9 @@ export function AccountingPageClient() {
                             <Select
                               value={transport.currency}
                               onValueChange={(value: "USD" | "EGP") => {
-                                const updated = [...transportation]
-                                updated[index].currency = value
-                                setTransportation(updated)
+                                const updated = [...transportation];
+                                updated[index].currency = value;
+                                setTransportation(updated);
                               }}
                               disabled={!editMode}
                             >
@@ -1236,24 +1424,37 @@ export function AccountingPageClient() {
                             <RadioGroup
                               value={transport.status}
                               onValueChange={(value: "pending" | "paid") => {
-                                const updated = [...transportation]
-                                updated[index].status = value
-                                setTransportation(updated)
+                                const updated = [...transportation];
+                                updated[index].status = value;
+                                setTransportation(updated);
                               }}
                             >
                               <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="pending" id={`pending-transport-${index}`} />
-                                  <Label htmlFor={`pending-transport-${index}`}>Pending</Label>
+                                  <RadioGroupItem
+                                    value="pending"
+                                    id={`pending-transport-${index}`}
+                                  />
+                                  <Label htmlFor={`pending-transport-${index}`}>
+                                    Pending
+                                  </Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="paid" id={`paid-transport-${index}`} />
-                                  <Label htmlFor={`paid-transport-${index}`}>Paid</Label>
+                                  <RadioGroupItem
+                                    value="paid"
+                                    id={`paid-transport-${index}`}
+                                  />
+                                  <Label htmlFor={`paid-transport-${index}`}>
+                                    Paid
+                                  </Label>
                                 </div>
                               </div>
                             </RadioGroup>
                           ) : (
-                            <Badge variant={getStatusColor(transport.status)} className="capitalize">
+                            <Badge
+                              variant={getStatusColor(transport.status)}
+                              className="capitalize"
+                            >
                               {transport.status}
                             </Badge>
                           )}
@@ -1263,7 +1464,11 @@ export function AccountingPageClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setTransportation(transportation.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setTransportation(
+                                  transportation.filter((_, i) => i !== index)
+                                )
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1277,7 +1482,8 @@ export function AccountingPageClient() {
               </div>
               <div className="mt-4 text-right">
                 <div className="text-lg font-semibold">
-                  Total: {totals.totalTransportation.toLocaleString()} {selectedCurrency}
+                  Total: {totals.totalTransportation.toLocaleString()}{" "}
+                  {selectedCurrency}
                 </div>
               </div>
             </div>
@@ -1296,20 +1502,30 @@ export function AccountingPageClient() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b">
-                  <Label className="text-base font-medium">Grand Total Income</Label>
+                  <Label className="text-base font-medium">
+                    Grand Total Income
+                  </Label>
                   <span className="font-bold text-green-600 text-lg">
-                    {totals.grandTotalIncome.toLocaleString()} {selectedCurrency}
+                    {totals.grandTotalIncome.toLocaleString()}{" "}
+                    {selectedCurrency}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
-                  <Label className="text-base font-medium">Grand Total Expenses</Label>
+                  <Label className="text-base font-medium">
+                    Grand Total Expenses
+                  </Label>
                   <span className="font-bold text-red-600 text-lg">
-                    {totals.grandTotalExpenses.toLocaleString()} {selectedCurrency}
+                    {totals.grandTotalExpenses.toLocaleString()}{" "}
+                    {selectedCurrency}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-t-2 border-primary">
                   <Label className="text-xl font-bold">Rest Profit</Label>
-                  <span className={`text-2xl font-bold ${totals.restProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  <span
+                    className={`text-2xl font-bold ${
+                      totals.restProfit >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
                     {totals.restProfit.toLocaleString()} {selectedCurrency}
                   </span>
                 </div>
@@ -1320,7 +1536,10 @@ export function AccountingPageClient() {
                     <span>Profit Margin</span>
                     <span className="font-medium">
                       {totals.grandTotalIncome > 0
-                        ? ((totals.restProfit / totals.grandTotalIncome) * 100).toFixed(1)
+                        ? (
+                            (totals.restProfit / totals.grandTotalIncome) *
+                            100
+                          ).toFixed(1)
                         : 0}
                       %
                     </span>
@@ -1333,8 +1552,11 @@ export function AccountingPageClient() {
                           0,
                           Math.min(
                             100,
-                            totals.grandTotalIncome > 0 ? (totals.restProfit / totals.grandTotalIncome) * 100 : 0,
-                          ),
+                            totals.grandTotalIncome > 0
+                              ? (totals.restProfit / totals.grandTotalIncome) *
+                                  100
+                              : 0
+                          )
                         )}%`,
                       }}
                     ></div>
@@ -1345,7 +1567,11 @@ export function AccountingPageClient() {
                     <span>Expense Ratio</span>
                     <span className="font-medium">
                       {totals.grandTotalIncome > 0
-                        ? ((totals.grandTotalExpenses / totals.grandTotalIncome) * 100).toFixed(1)
+                        ? (
+                            (totals.grandTotalExpenses /
+                              totals.grandTotalIncome) *
+                            100
+                          ).toFixed(1)
                         : 0}
                       %
                     </span>
@@ -1359,9 +1585,11 @@ export function AccountingPageClient() {
                           Math.min(
                             100,
                             totals.grandTotalIncome > 0
-                              ? (totals.grandTotalExpenses / totals.grandTotalIncome) * 100
-                              : 0,
-                          ),
+                              ? (totals.grandTotalExpenses /
+                                  totals.grandTotalIncome) *
+                                  100
+                              : 0
+                          )
                         )}%`,
                       }}
                     ></div>
@@ -1373,5 +1601,5 @@ export function AccountingPageClient() {
         </Card>
       </div>
     </DashboardLayout>
-  )
+  );
 }

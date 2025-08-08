@@ -491,6 +491,7 @@ export function BookingViewPageClient({
                             <TableHead>Date</TableHead>
                             <TableHead>Time</TableHead>
                             <TableHead>Include</TableHead>
+                            <TableHead>Exclude</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -500,6 +501,7 @@ export function BookingViewPageClient({
                               <TableCell>{day.date}</TableCell>
                               <TableCell>{day.time}</TableCell>
                               <TableCell>{day.include}</TableCell>
+                              <TableCell>{day.exclude}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -786,6 +788,7 @@ export function BookingViewPageClient({
                   </p>
                 </div>
               </div>
+
               <div className="text-sm">
                 <p className="font-medium text-muted-foreground">Description</p>
                 <p>{booking.cairoTransfer.driver.description}</p>

@@ -9,8 +9,7 @@ import { redirect } from "next/navigation";
 
 import { BookingTypes } from "@/types/bookingData";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export async function createBookingAction(data: BookingTypes) {
   const token = (await cookies()).get("token")?.value;

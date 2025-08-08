@@ -42,6 +42,7 @@ interface PendingItem {
   amount: number;
   currency: string;
   paymentDate: string;
+  direction: "dueToMe" | "dueFromMe"; // <-- أضف هذا الحقل
 }
 
 export function PendingItemsClientPage({
@@ -142,6 +143,7 @@ export function PendingItemsClientPage({
                   <TableHead>{t("invoiceNumber")}</TableHead>
                   <TableHead>{t("itemType")}</TableHead>
                   <TableHead>{t("itemName")}</TableHead>
+                  <TableHead>{t("direction")}</TableHead>
                   <TableHead>{t("paymentDate")}</TableHead>
                   <TableHead className="text-right">{t("amount")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
@@ -163,6 +165,17 @@ export function PendingItemsClientPage({
                       </TableCell>
                       <TableCell>{item.itemType}</TableCell>
                       <TableCell>{item.itemName || "N/A"}</TableCell>
+                      <TableCell>
+                        {item.direction === "dueToMe" ? (
+                          <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            مستحق لك
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                            مستحق عليك
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center">
                           <Clock className="mr-2 h-4 w-4 text-orange-500" />

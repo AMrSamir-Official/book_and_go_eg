@@ -25,100 +25,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { invoiceStatuses, paymentMethods } from "@/lib/fake-data";
+import { InvoiceTypes } from "@/types/invoice";
 import { DollarSign, Minus, Plus, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useTransition } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-
-export interface InvoiceFormData {
-  id: string;
-  _id: string;
-  title: string;
-  invoiceNumber: string;
-  bookingId: string;
-  bookingDate: string;
-  fileNumber: string;
-  supplierName: string;
-  arrivalFileDate: string;
-  totalInvoiceAmount: number;
-  totalInvoiceCurrency: "EGP" | "USD";
-  totalInvoiceExchangeRate?: number;
-  paidAmount: number;
-  restAmount: number;
-  restAmountCurrency: "EGP" | "USD";
-  restAmountExchangeRate?: number;
-  wayOfPayment: string;
-  paymentDate: string;
-  extraIncoming: Array<{
-    incomeType: string;
-    amount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    note: string;
-    status: "pending" | "paid";
-    date: string;
-  }>;
-  accommodation: Array<{
-    city: string; // NEW
-    name: string;
-    totalAmount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  nileCruises: Array<{
-    name: string;
-    totalAmount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  domesticFlights: Array<{
-    details: string;
-    cost: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  entranceTickets: Array<{
-    site: string;
-    cost: number;
-    no: number;
-    total: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-  }>;
-  guide: Array<{
-    city: string; // NEW
-    name: string;
-    cost: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    paymentDate: string;
-    status: "pending" | "paid";
-  }>;
-  transportation: Array<{
-    city: string;
-    supplierName: string;
-    amount: number;
-    currency: "EGP" | "USD";
-    exchangeRate?: number;
-    status: "pending" | "paid";
-    siteCostNo: string;
-  }>;
-  grandTotalIncomeEGP: number;
-  grandTotalExpensesEGP: number;
-  restProfitEGP: number;
-  dueDate: string;
-  paymentMethod: string;
-  status: string;
-  notes: string;
-  dynamicFields: Array<{ label: string; value: string }>;
-}
 
 const convertToEGP = (
   amount?: number,
@@ -131,7 +43,7 @@ const convertToEGP = (
   return amount || 0;
 };
 
-const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
+const calculateTotals = (formValues: Partial<InvoiceTypes>) => {
   const mainInvoiceEGP = convertToEGP(
     formValues.totalInvoiceAmount,
     formValues.totalInvoiceCurrency,
@@ -225,17 +137,17 @@ const calculateTotals = (formValues: Partial<InvoiceFormData>) => {
     totalOwedToSuppliers,
   };
 };
-const formatDateForInput = (dateString: string | undefined) => {
+
+const formatDateForInput = (dateString: string | undefined | null) => {
   if (!dateString) return "";
-  // ستقوم هذه الدالة بأخذ الجزء الأول من النص قبل حرف T
-  // "2025-08-15T00:00:00.000Z" -> "2025-08-15"
   return new Date(dateString).toISOString().split("T")[0];
 };
+
 export function EditInvoicePageClient({
   invoice,
   initialData,
 }: {
-  invoice: InvoiceFormData;
+  invoice: InvoiceTypes & { id: string };
   initialData: any;
 }) {
   const {
@@ -251,34 +163,42 @@ export function EditInvoicePageClient({
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const formattedInvoice = {
-    ...invoice,
-    bookingDate: formatDateForInput(invoice.bookingDate),
-    arrivalFileDate: formatDateForInput(invoice.arrivalFileDate),
-    paymentDate: formatDateForInput(invoice.paymentDate),
-    dueDate: formatDateForInput(invoice.dueDate),
-    // ... قم بتنسيق أي حقول تاريخ أخرى هنا، بما في ذلك تلك الموجودة داخل المصفوفات
-    extraIncoming: invoice.extraIncoming.map((item) => ({
-      ...item,
-      date: formatDateForInput(item.date),
-    })),
-    accommodation: invoice.accommodation.map((item) => ({
-      ...item,
-      paymentDate: formatDateForInput(item.paymentDate),
-    })),
-    nileCruises: (invoice.nileCruises || []).map((item) => ({
-      ...item,
-      paymentDate: formatDateForInput(item.paymentDate),
-    })),
-    domesticFlights: invoice.domesticFlights.map((item) => ({
-      ...item,
-      paymentDate: formatDateForInput(item.paymentDate),
-    })),
-    guide: invoice.guide.map((item) => ({
-      ...item,
-      paymentDate: formatDateForInput(item.paymentDate),
-    })),
-  };
+
+  const formattedInvoice = useMemo(
+    () => ({
+      ...invoice,
+      bookingDate: formatDateForInput(invoice.bookingDate),
+      arrivalFileDate: formatDateForInput(invoice.arrivalFileDate),
+      paymentDate: formatDateForInput(invoice.paymentDate),
+      dueDate: formatDateForInput(invoice.dueDate),
+      extraIncoming: (invoice.extraIncoming || []).map((item) => ({
+        ...item,
+        date: formatDateForInput(item.date),
+      })),
+      accommodation: (invoice.accommodation || []).map((item) => ({
+        ...item,
+        paymentDate: formatDateForInput(item.paymentDate),
+      })),
+      nileCruises: (invoice.nileCruises || []).map((item) => ({
+        ...item,
+        paymentDate: formatDateForInput(item.paymentDate),
+      })),
+      domesticFlights: (invoice.domesticFlights || []).map((item) => ({
+        ...item,
+        paymentDate: formatDateForInput(item.paymentDate),
+      })),
+      guide: (invoice.guide || []).map((item) => ({
+        ...item,
+        paymentDate: formatDateForInput(item.paymentDate),
+      })),
+      transportation: (invoice.transportation || []).map((item) => ({
+        ...item,
+        paymentDate: formatDateForInput(item.paymentDate),
+      })),
+    }),
+    [invoice]
+  );
+
   const {
     register,
     control,
@@ -286,61 +206,9 @@ export function EditInvoicePageClient({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<InvoiceFormData>({ defaultValues: formattedInvoice });
-
-  const formValues = watch();
-  const totals = useMemo(() => calculateTotals(formValues), [formValues]);
-
-  useEffect(() => {
-    const mainInvoiceEGP = convertToEGP(
-      formValues.totalInvoiceAmount,
-      formValues.totalInvoiceCurrency,
-      formValues.totalInvoiceExchangeRate
-    );
-    const extraIncomingTotal = (formValues.extraIncoming || []).reduce(
-      (sum, item) =>
-        sum + convertToEGP(item?.amount, item?.currency, item?.exchangeRate),
-      0
-    );
-    const paidAmountEGP = convertToEGP(
-      formValues.paidAmount,
-      formValues.totalInvoiceCurrency,
-      formValues.totalInvoiceExchangeRate
-    );
-    // const calculatedRestEGP =
-    //   mainInvoiceEGP + extraIncomingTotal - paidAmountEGP;
-    const calculatedRestEGP = mainInvoiceEGP - paidAmountEGP;
-    if (formValues.restAmount !== calculatedRestEGP) {
-      setValue("restAmount", calculatedRestEGP);
-    }
-  }, [
-    formValues.totalInvoiceAmount,
-    formValues.totalInvoiceCurrency,
-    formValues.totalInvoiceExchangeRate,
-    formValues.paidAmount,
-    formValues.extraIncoming,
-    formValues.restAmount,
-    setValue,
-  ]);
-
-  useEffect(() => {
-    const subscription = watch((value, { name }) => {
-      if (name && name.startsWith("entranceTickets")) {
-        const parts = name.split(".");
-        if (parts.length === 3 && (parts[2] === "cost" || parts[2] === "no")) {
-          const index = parseInt(parts[1], 10);
-          const ticket = value.entranceTickets?.[index];
-          if (ticket) {
-            const newTotal = (ticket.cost || 0) * (ticket.no || 1);
-            if (ticket.total !== newTotal) {
-              setValue(`entranceTickets.${index}.total`, newTotal);
-            }
-          }
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [watch, setValue]);
+  } = useForm<InvoiceTypes>({
+    defaultValues: formattedInvoice,
+  });
 
   const {
     fields: extraIncomingFields,
@@ -378,18 +246,68 @@ export function EditInvoicePageClient({
     remove: removeTransportation,
   } = useFieldArray({ control, name: "transportation" });
 
-  const onSubmit = (data: InvoiceFormData) => {
+  const formValues = watch();
+  const totals = useMemo(() => calculateTotals(formValues), [formValues]);
+
+  useEffect(() => {
+    const mainInvoiceEGP = convertToEGP(
+      formValues.totalInvoiceAmount,
+      formValues.totalInvoiceCurrency,
+      formValues.totalInvoiceExchangeRate
+    );
+    const paidAmountEGP = convertToEGP(
+      formValues.paidAmount,
+      formValues.paidAmountCurrency,
+      formValues.paidAmountExchangeRate
+    );
+    const calculatedRestEGP = mainInvoiceEGP - paidAmountEGP;
+    if (formValues.restAmount?.toFixed(2) !== calculatedRestEGP.toFixed(2)) {
+      setValue("restAmount", calculatedRestEGP);
+    }
+  }, [
+    formValues.totalInvoiceAmount,
+    formValues.totalInvoiceCurrency,
+    formValues.totalInvoiceExchangeRate,
+    formValues.paidAmount,
+    formValues.paidAmountCurrency,
+    formValues.paidAmountExchangeRate,
+    setValue,
+  ]);
+
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name && name.startsWith("entranceTickets")) {
+        const parts = name.split(".");
+        if (parts.length === 3 && (parts[2] === "cost" || parts[2] === "no")) {
+          const index = parseInt(parts[1], 10);
+          const ticket = value.entranceTickets?.[index];
+          if (ticket) {
+            const newTotal = (ticket.cost || 0) * (ticket.no || 1);
+            if (ticket.total !== newTotal) {
+              setValue(`entranceTickets.${index}.total`, newTotal);
+            }
+          }
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, setValue]);
+
+  const onSubmit = (data: InvoiceTypes) => {
     const finalTotals = calculateTotals(data);
     const finalData = {
       ...data,
       grandTotalIncomeEGP: finalTotals.grandTotalIncomeEGP,
       grandTotalExpensesEGP: finalTotals.grandTotalExpensesEGP,
       restProfitEGP: finalTotals.restProfitEGP,
-      bookingId: (data.bookingId as any)._id || data.bookingId,
+      totalOwedToSuppliers: finalTotals.totalOwedToSuppliers,
+      bookingId: (data.bookingId as any)?._id || data.bookingId,
     };
+
     if (typeof (finalData as any).createdBy === "object") {
       delete (finalData as any).createdBy;
     }
+
     startTransition(async () => {
       const result = await updateInvoiceAction(invoice.id, finalData);
       if (result?.success === false) {
@@ -401,6 +319,7 @@ export function EditInvoicePageClient({
       } else {
         toast({ title: "Invoice Updated Successfully!" });
         router.push("/invoices");
+        router.refresh();
       }
     });
   };
@@ -478,14 +397,12 @@ export function EditInvoicePageClient({
                     render={({ field }) => (
                       <Select
                         onValueChange={field.onChange}
-                        // استخدم defaultValue هنا لضمان عرض القيمة الحالية عند فتح الصفحة
                         defaultValue={field.value}
                       >
                         <SelectTrigger id="supplierName">
                           <SelectValue placeholder="Select a supplier" />
                         </SelectTrigger>
                         <SelectContent>
-                          {/* تأكد أن متغير "supplier" متاح من الـ props */}
                           {supplier.map((s: any) => (
                             <SelectItem key={s._id} value={s.name}>
                               {s.name}
@@ -638,7 +555,7 @@ export function EditInvoicePageClient({
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                   <div>
                     <Label>Paid Amount</Label>
                     <Input
@@ -648,55 +565,52 @@ export function EditInvoicePageClient({
                       placeholder="0.00"
                     />
                   </div>
-                  <div className="md:col-span-2">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                      <div>
-                        <Label>Rest Amount</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...register("restAmount", { valueAsNumber: true })}
-                          placeholder="0.00"
-                          readOnly
-                        />
-                      </div>
-                      <div>
-                        <Label>Currency</Label>
-                        <Controller
-                          name="restAmountCurrency"
-                          control={control}
-                          render={({ field }) => (
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              className="flex items-center space-x-4 pt-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="EGP" id="rest-inv-egp" />
-                                <Label htmlFor="rest-inv-egp">EGP</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="USD" id="rest-inv-usd" />
-                                <Label htmlFor="rest-inv-usd">USD</Label>
-                              </div>
-                            </RadioGroup>
-                          )}
-                        />
-                      </div>
-                      {watch("restAmountCurrency") === "USD" && (
-                        <div>
-                          <Label>Exchange Rate ($ to E£)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...register("restAmountExchangeRate", {
-                              valueAsNumber: true,
-                            })}
-                            placeholder="e.g., 47.50"
-                          />
-                        </div>
+                  <div>
+                    <Label>Paid Amount Currency</Label>
+                    <Controller
+                      name="paidAmountCurrency"
+                      control={control}
+                      render={({ field }) => (
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex items-center space-x-4 pt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="EGP" id="paid-inv-egp" />
+                            <Label htmlFor="paid-inv-egp">EGP</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="USD" id="paid-inv-usd" />
+                            <Label htmlFor="paid-inv-usd">USD</Label>
+                          </div>
+                        </RadioGroup>
                       )}
+                    />
+                  </div>
+                  {watch("paidAmountCurrency") === "USD" && (
+                    <div>
+                      <Label>Paid Ex. Rate ($ to E£)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...register("paidAmountExchangeRate", {
+                          valueAsNumber: true,
+                        })}
+                        placeholder="e.g., 47.50"
+                      />
                     </div>
+                  )}
+                  <div>
+                    <Label>Rest Amount (EGP)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...register("restAmount", { valueAsNumber: true })}
+                      placeholder="0.00"
+                      readOnly
+                      className="font-bold bg-muted"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -787,7 +701,7 @@ export function EditInvoicePageClient({
                                 <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                               <SelectContent>
-                                {extraIncomingTypes.map((type) => (
+                                {extraIncomingTypes.map((type: any) => (
                                   <SelectItem key={type._id} value={type.name}>
                                     {type.name}
                                   </SelectItem>
@@ -1008,7 +922,10 @@ export function EditInvoicePageClient({
                               </SelectTrigger>
                               <SelectContent>
                                 {hotels.map((hotel: any) => (
-                                  <SelectItem key={hotel.id} value={hotel.name}>
+                                  <SelectItem
+                                    key={hotel._id || hotel.id}
+                                    value={hotel.name}
+                                  >
                                     {hotel.name}
                                   </SelectItem>
                                 ))}
@@ -1153,8 +1070,6 @@ export function EditInvoicePageClient({
                     key={field.id}
                     className="border rounded-lg p-4 space-y-4"
                   >
-                    {/* UI for a single Nile Cruise item (name, amount, currency, etc.) */}
-                    {/* This structure is almost identical to the Accommodation item */}
                     <div className="flex items-center justify-between">
                       <h5 className="font-medium">
                         Nile Cruise Item {index + 1}
@@ -1170,7 +1085,134 @@ export function EditInvoicePageClient({
                         </Button>
                       )}
                     </div>
-                    {/* ... (Copy the fields from your previous request here for name, totalAmount, currency, etc.) ... */}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+                      <div className="md:col-span-2">
+                        <Label>Nile Cruise Name</Label>
+                        <Controller
+                          name={`nileCruises.${index}.name`}
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Nile Cruise" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {nileCruises.map((cruise: any) => (
+                                  <SelectItem
+                                    key={cruise._id}
+                                    value={cruise.name}
+                                  >
+                                    {cruise.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label>Total Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...register(`nileCruises.${index}.totalAmount`, {
+                            valueAsNumber: true,
+                          })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label>Currency</Label>
+                        <Controller
+                          name={`nileCruises.${index}.currency`}
+                          control={control}
+                          render={({ field }) => (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex items-center space-x-4 pt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="EGP"
+                                  id={`cruise-egp-${index}`}
+                                />
+                                <Label htmlFor={`cruise-egp-${index}`}>
+                                  EGP
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="USD"
+                                  id={`cruise-usd-${index}`}
+                                />
+                                <Label htmlFor={`cruise-usd-${index}`}>
+                                  USD
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
+                      {watch(`nileCruises.${index}.currency`) === "USD" && (
+                        <div>
+                          <Label>Exchange Rate</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...register(`nileCruises.${index}.exchangeRate`, {
+                              valueAsNumber: true,
+                            })}
+                            placeholder="e.g., 47.50"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Payment Date</Label>
+                        <Input
+                          type="date"
+                          {...register(`nileCruises.${index}.paymentDate`)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Controller
+                          name={`nileCruises.${index}.status`}
+                          control={control}
+                          render={({ field }) => (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex items-center space-x-4 pt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`cruise-pending-${index}`}
+                                />
+                                <Label htmlFor={`cruise-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`cruise-paid-${index}`}
+                                />
+                                <Label htmlFor={`cruise-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <div className="bg-muted p-4 rounded-lg flex justify-between items-center">
@@ -1186,7 +1228,7 @@ export function EditInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-semibold">2- Domestic Flight</h4>
+                  <h4 className="text-lg font-semibold">3- Domestic Flight</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1347,7 +1389,7 @@ export function EditInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">3- Entrance Tickets</h4>
+                  <h4 className="text-lg font-semibold">4- Entrance Tickets</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1495,7 +1537,7 @@ export function EditInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">4- Guide</h4>
+                  <h4 className="text-lg font-semibold">5- Guide</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1697,7 +1739,7 @@ export function EditInvoicePageClient({
               <Separator />
               <div className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap">
-                  <h4 className="text-lg font-semibold">5- Transportation</h4>
+                  <h4 className="text-lg font-semibold">6- Transportation</h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -1711,6 +1753,7 @@ export function EditInvoicePageClient({
                         exchangeRate: 0,
                         status: "pending",
                         siteCostNo: "",
+                        paymentDate: "",
                       })
                     }
                   >
@@ -1848,38 +1891,47 @@ export function EditInvoicePageClient({
                         </div>
                       )}
                     </div>
-                    <div>
-                      <Label>Status</Label>
-                      <Controller
-                        name={`transportation.${index}.status`}
-                        control={control}
-                        render={({ field }) => (
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            className="flex items-center space-x-4 pt-2"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="pending"
-                                id={`trans-pending-${index}`}
-                              />
-                              <Label htmlFor={`trans-pending-${index}`}>
-                                Pending
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="paid"
-                                id={`trans-paid-${index}`}
-                              />
-                              <Label htmlFor={`trans-paid-${index}`}>
-                                Paid
-                              </Label>
-                            </div>
-                          </RadioGroup>
-                        )}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Payment Date</Label>
+                        <Input
+                          type="date"
+                          {...register(`transportation.${index}.paymentDate`)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Controller
+                          name={`transportation.${index}.status`}
+                          control={control}
+                          render={({ field }) => (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex items-center space-x-4 pt-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="pending"
+                                  id={`trans-pending-${index}`}
+                                />
+                                <Label htmlFor={`trans-pending-${index}`}>
+                                  Pending
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="paid"
+                                  id={`trans-paid-${index}`}
+                                />
+                                <Label htmlFor={`trans-paid-${index}`}>
+                                  Paid
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1951,7 +2003,13 @@ export function EditInvoicePageClient({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button
+              className={` ${
+                isPending ? "" : "bg-blue-700 text-white hover:text-blue-600"
+              }`}
+              type="submit"
+              disabled={isPending}
+            >
               {isPending ? (
                 "Saving..."
               ) : (

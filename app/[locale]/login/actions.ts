@@ -3,9 +3,8 @@
 import { cookies } from "next/headers";
 
 // تأكد من وضع رابط الـ Backend API في متغيرات البيئة في ملف .env.local
-// مثال: NEXT_PUBLIC_API_URL=http://45.151.142.147:5000/api
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://45.151.142.147:5000/api";
+// مثال: NEXT_PUBLIC_API_URL=http://localhost:5000/api
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // يمكن استخدام interface لتحديد شكل الحالة التي يتم إرجاعها
 interface ActionState {

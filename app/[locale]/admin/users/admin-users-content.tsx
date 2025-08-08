@@ -59,6 +59,7 @@ import {
 import { useTranslations } from "next-intl";
 import { memo, useCallback, useMemo, useState, useTransition } from "react";
 import {
+  adminUpdatePasswordAction,
   createUserAction,
   deleteUserAction,
   updateUserAction,
@@ -91,6 +92,7 @@ export const AdminUsersContent = memo(function AdminUsersContent({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState("users");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const filteredUsers = useMemo(() => {
@@ -339,7 +341,11 @@ export const AdminUsersContent = memo(function AdminUsersContent({
                     </TableHeader>
                     <TableBody>
                       {filteredUsers.map((user) => (
-                        <TableRow key={user._id}>
+                        <TableRow
+                          key={user._id}
+                          onClick={() => handleViewUser(user)}
+                          className="cursor-pointer"
+                        >
                           <TableCell>
                             <div className="flex items-center space-x-3">
                               <Avatar className="h-8 w-8">
@@ -460,6 +466,87 @@ export const AdminUsersContent = memo(function AdminUsersContent({
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
+                      {/* Security Settings Section */}
+                      <div className="pt-4 border-t">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                          Security
+                        </h4>
+                        <Dialog
+                          open={isPasswordDialogOpen}
+                          onOpenChange={setIsPasswordDialogOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button variant="outline">Set New Password</Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Set New Password for {selectedUser?.name}
+                              </DialogTitle>
+                            </DialogHeader>
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                startTransition(async () => {
+                                  if (!selectedUser?._id) return;
+                                  const result =
+                                    await adminUpdatePasswordAction(
+                                      selectedUser._id,
+                                      formData
+                                    );
+                                  if (result.success) {
+                                    toast({
+                                      title: "Success",
+                                      description: result.message,
+                                    });
+                                    setIsPasswordDialogOpen(false); // أغلق النافذة عند النجاح
+                                  } else {
+                                    toast({
+                                      title: "Error",
+                                      description: result.message,
+                                      variant: "destructive",
+                                    });
+                                  }
+                                });
+                              }}
+                              className="grid gap-4 py-4"
+                            >
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label
+                                  htmlFor="newPassword"
+                                  className="text-right"
+                                >
+                                  New Password
+                                </Label>
+                                <Input
+                                  id="newPassword"
+                                  name="newPassword"
+                                  type="password"
+                                  className="col-span-3"
+                                  placeholder="••••••••"
+                                  required
+                                  minLength={6}
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2 mt-4">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setIsPasswordDialogOpen(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button type="submit" disabled={isPending}>
+                                  {isPending
+                                    ? "Updating..."
+                                    : "Update Password"}
+                                </Button>
+                              </div>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">
                           Role
